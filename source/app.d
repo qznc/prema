@@ -64,7 +64,8 @@ void logout(HTTPServerRequest req, HTTPServerResponse res)
 
 void checkLogin(HTTPServerRequest req, HTTPServerResponse res)
 {
-	// force a redirect to / for unauthenticated users
-	if (req.session)
-		res.redirect("/");
+	if (req.session) return;
+	/* not authenticated! */
+	auto pageTitle = "Authentication Error";
+	res.render!("index.dt", pageTitle, req);
 }
