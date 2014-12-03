@@ -5,11 +5,15 @@ LICENSE: http://www.apache.org/licenses/LICENSE-2.0
 
 import vibe.d;
 
+static immutable host = "127.0.0.1";
+
 shared static this()
 {
 	auto router = new URLRouter;
 	router
 		.get("/", &index)
+		.post("/login", &verifyPersona)
+		.any("/logout", &logout)
 	;
 
 	auto fsettings = new HTTPFileServerSettings;
@@ -24,48 +28,89 @@ shared static this()
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
-	settings.bindAddresses = ["::1", "127.0.0.1"];
+	settings.bindAddresses = [host];
 	settings.sessionStore = new MemorySessionStore;
 	listenHTTP(settings, router);
 
-	logInfo("Please open http://127.0.0.1:8080/ in your browser.");
+	logInfo("Please open http://"~host~":8080/ in your browser.");
 }
 
 void index(HTTPServerRequest req, HTTPServerResponse res)
 {
+	logInfo("index");
 	auto pageTitle = "Prema Prediction Market";
-	res.render!("index.dt", pageTitle, req);
+	string userEmail = "";
+	if (req.session) {
+		logInfo("index logged in");
+		userEmail = req.session.get("userEmail", "");
+	}
+	res.render!("index.dt", pageTitle, userEmail, req);
 }
 
 void protect(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto pageTitle = "Internal Prema Prediction Market";
-	res.render!("index.dt", pageTitle, req);
+	string userEmail = "";
+	if (req.session) {
+		logInfo("index logged in");
+		userEmail = req.session.get("userEmail", "");
+	}
+	res.render!("index.dt", pageTitle, userEmail, req);
 }
 
-void login(HTTPServerRequest req, HTTPServerResponse res)
+void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 {
-	enforceHTTP("username" in req.form && "password" in req.form,
-			HTTPStatus.badRequest, "Missing username/password field.");
+	enforceHTTP("assertion" in req.form,
+			HTTPStatus.badRequest, "Missing assertion field.");
+	const ass = req.form["assertion"];
+	const audience = "http://"~host~":8080/";
+	logInfo("verifyPersona");
 
-	// TODO verify user/password here
-
-	auto session = res.startSession();
-	session.set("username", req.form["username"]);
-	session.set("password", req.form["password"]);
-	res.redirect("/");
+	requestHTTP("https://verifier.login.persona.org/verify",
+		(scope req) {
+			logInfo("create POST request");
+			req.method = HTTPMethod.POST;
+			req.contentType = "application/x-www-form-urlencoded";
+			auto bdy = "assertion="~ass~"&audience="~audience;
+			req.bodyWriter.write(bdy);
+		},
+		(scope res2) {
+			auto answer = res2.readJson();
+			enforceHTTP(answer["status"] == "okay",
+				HTTPStatus.badRequest, "Verification failed.");
+			enforceHTTP(answer["audience"] == audience,
+				HTTPStatus.badRequest, "Verification failed.");
+			string expires = answer["expires"].toString();
+			string issuer = answer["issuer"].toString();
+			string email = answer["email"].toString();
+			auto session = res.startSession();
+			session.set("userEmail", email);
+			session.set("persona_expires", expires);
+			session.set("persona_issuer", issuer);
+			logInfo("Successfully logged in");
+		});
+	res.bodyWriter.write("ok");
 }
 
 void logout(HTTPServerRequest req, HTTPServerResponse res)
 {
-	res.terminateSession();
-	res.redirect("/");
+	if (req.session) {
+		logInfo("logout: terminate session");
+		res.terminateSession();
+		res.redirect("/");
+	} else {
+		logInfo("nothing to logout");
+		res.statusCode = HTTPStatus.badRequest;
+		res.bodyWriter.write("nothing to logout");
+	}
 }
 
 void checkLogin(HTTPServerRequest req, HTTPServerResponse res)
 {
 	if (req.session) return;
 	/* not authenticated! */
+	logInfo("checkLogin failed: "~req.path);
 	auto pageTitle = "Authentication Error";
-	res.render!("index.dt", pageTitle, req);
+	res.statusCode = HTTPStatus.forbidden;
+	res.bodyWriter.write(pageTitle);
 }
