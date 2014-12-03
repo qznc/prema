@@ -1,0 +1,11 @@
+{
+	"name": "prema",
+	"description": "A prediction market web server.",
+	"copyright": "Copyright © 2014, Andreas Zwinkau",
+	"licence": "Apache Licence 2",
+	"authors": ["Andreas Zwinkau <qznc@web.de>"],
+	"dependencies": {
+		"vibe-d": "~>0.7.19"
+	},
+	"versions": ["VibeDefaultMain"]
+}

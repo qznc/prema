@@ -1,0 +1,4 @@
+extends base
+
+block body
+	p Hello, World! When I am big, I will be a prediction market.

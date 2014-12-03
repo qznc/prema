@@ -1,0 +1,19 @@
+doctype html
+html
+	head
+		title #{pageTitle}
+		meta(name='generator', content='vibed.org')
+		meta(name='viewport', content='width=device-width, initial-scale=1')
+		link(rel='stylesheet', type='text/css', href='normalize.css')
+		link(rel='stylesheet', type='text/css', href='prema.css')
+		//- TODO icon? content type? async javascript?
+	body
+		header
+			h1 #{pageTitle}
+			p Header text
+
+		article
+			block body
+
+		footer
+			p Footer text
