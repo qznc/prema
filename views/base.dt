@@ -4,6 +4,7 @@ html
 		title #{pageTitle}
 		meta(name='generator', content='vibed.org')
 		meta(name='viewport', content='width=device-width, initial-scale=1')
+		link(rel='shortcut icon', href='/static/favicon.ico')
 		link(rel='stylesheet', type='text/css', href='/static/normalize.css')
 		link(rel='stylesheet', type='text/css', href='/static/prema.css')
 		//- TODO icon? content type? async javascript?
