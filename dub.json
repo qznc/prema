@@ -7,5 +7,6 @@
 	"dependencies": {
 		"vibe-d": "~>0.7.19"
 	},
-	"versions": ["VibeDefaultMain"]
+	"versions": ["VibeDefaultMain"],
+	"libs": ["sqlite3"],
 }
