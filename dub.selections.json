@@ -1,8 +1,10 @@
 {
 	"fileVersion": 1,
 	"versions": {
+		"sizefmt": "0.2.0",
 		"vibe-d": "0.7.21",
 		"libevent": "2.0.1+2.0.16",
+		"d2sqlite3": "0.5.2",
 		"openssl": "1.0.0+1.0.0e",
 		"libev": "4.0.0+4.04"
 	}
