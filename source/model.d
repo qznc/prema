@@ -28,7 +28,7 @@ void init_empty_db(Database db) {
 		yes_order INTEGER, /* what was bought 1=yes, 0=no */
 		price REAL /* might be negative! */
 		);
-	INSERT INTO orders VALUES (NULL, 1, 1, 10, 1, 5.0);
+	INSERT INTO orders VALUES (NULL, 1, 1, 100, 0, 62.0);
 	");
 }
 
@@ -83,7 +83,7 @@ struct prediction {
 	}
 	/* chance that statement happens according to current market */
 	real chance() const pure @safe nothrow {
-		return LMSR_cost(b, yes_shares+1, no_shares) - LMSR_cost(b, yes_shares, no_shares);
+		return LMSR_chance(b, yes_shares, no_shares);
 	}
 
 	void toString(scope void delegate(const(char)[]) sink) const {
@@ -101,10 +101,53 @@ database get_database() {
 	return db;
 }
 
-immutable real b = 10;
+immutable real b = 100;
 
-real LMSR_cost(real b, real yes, real no) pure nothrow @safe {
-	return b + log(exp(yes/b) + exp(no/b));
+real LMSR_C(real b, real yes, real no) pure nothrow @safe {
+	return b * log(exp(yes/b) + exp(no/b));
+}
+
+real LMSR_cost(real b, real yes, real no, real amount) pure nothrow @safe {
+	return LMSR_C(b, yes+amount, no) - LMSR_C(b, yes, no);
+}
+
+unittest {
+	void assert_roughly(real a, real b) {
+		immutable real epsilon = 0.01;
+		assert (a+epsilon > b && b > a-epsilon, text(a)~" !~ "~text(b));
+	}
+	assert_roughly(LMSR_cost(100, 0, 0, 1), 0.50);
+	assert_roughly(LMSR_cost(100, 0, 0, 10), 5.12);
+	assert_roughly(LMSR_cost(100, 0, 0, 100), 62.01);
+	assert_roughly(LMSR_cost(100, 0, 0, 1000), 930.69);
+	assert_roughly(LMSR_cost(100, 0, 0, 10000), 9930.69);
+	assert_roughly(LMSR_cost(100, 50, 10, -10), -5.87);
+	assert_roughly(LMSR_cost(100, 20, 15, 20), 10.75);
+}
+
+real LMSR_chance(real b, real yes, real no) pure nothrow @safe {
+	const y =  LMSR_cost(b, yes, no, 1);
+	const n =  LMSR_cost(b, no, yes, 1);
+	return y / (y+n);
+}
+
+unittest {
+	void assert_roughly(real a, real b) {
+		immutable real epsilon = 0.01;
+		assert (a+epsilon > b && b > a-epsilon, text(a)~" !~ "~text(b));
+	}
+	assert_roughly(LMSR_chance(   10, 0, 0), 0.5);
+	assert_roughly(LMSR_chance(  100, 0, 0), 0.5);
+	assert_roughly(LMSR_chance( 1000, 0, 0), 0.5);
+	assert_roughly(LMSR_chance(10000, 0, 0), 0.5);
+	assert_roughly(LMSR_chance(100, 50, 10), 0.6);
+	assert_roughly(LMSR_chance(100, 10, 50), 0.4);
+	assert_roughly(LMSR_chance(100, 20, 15), 0.5122);
+	assert_roughly(LMSR_chance(100, 15, 20), 0.4878);
+	assert_roughly(LMSR_chance(100,    1, 0), 0.5025);
+	assert_roughly(LMSR_chance(100,   10, 0), 0.5244);
+	assert_roughly(LMSR_chance(100,  100, 0), 0.7306);
+	assert_roughly(LMSR_chance(100, 1000, 0), 1.0000);
 }
 
 unittest {
