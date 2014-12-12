@@ -2,24 +2,28 @@
 
 import d2sqlite3;
 import std.stdio: writeln;
-import std.math: log, exp;
+import std.math: log, exp, isNaN;
 import std.conv: text;
 import std.format: formatValue, singleSpec, formattedWrite;
+import std.datetime: Clock, SysTime;
 
 void init_empty_db(Database db) {
 	db.execute("
 	CREATE TABLE users (
 		id INTEGER PRIMARY KEY,
 		name TEXT NOT NULL,
-		email TEXT NOT NULL
+		email TEXT NOT NULL,
+		wealth REAL
 		);
-	INSERT INTO users VALUES (NULL, 'root', 'root@localhost');
-	INSERT INTO users VALUES (NULL, 'dummy', 'nobody@localhost');
+	INSERT INTO users VALUES (NULL, 'root', 'root@localhost', 1000);
+	INSERT INTO users VALUES (NULL, 'dummy', 'nobody@localhost', 1000);
 	CREATE TABLE predictions (
 		id INTEGER PRIMARY KEY,
-		statement TEXT NOT NULL
+		statement TEXT NOT NULL,
+		created TEXT NOT NULL, /* ISO8601 date */
+		closes TEXT NOT NULL, /* ISO8601 date */
+		settled TEXT /* ISO8601 date */
 		);
-	INSERT INTO predictions VALUES (NULL, 'This app will actually be used.');
 	CREATE TABLE orders (
 		id INTEGER PRIMARY KEY,
 		user INTEGER, /* who traded? */
@@ -40,24 +44,46 @@ struct database {
 		this.db = Database(sqlite_path);
 	}
 
-	string[] users() {
-		auto query = db.query("SELECT name FROM users;");
-		string[] result;
+	user getUser(int id) {
+		return user(id, db);
+	}
+
+	user[] users() {
+		auto query = db.query("SELECT id,name,email,wealth FROM users ORDER BY id;");
+		user[] result;
 		foreach (row; query) {
-			result ~= row.peek!string(0);
+			auto id = row.peek!int(0);
+			auto name = row.peek!string(1);
+			auto email = row.peek!string(2);
+			auto wealth = row.peek!real(3);
+			assert (!isNaN(wealth));
+			result ~= user(id,name,email,wealth);
 		}
 		return result;
 	}
 
 	prediction[] predictions() {
-		auto query = db.query("SELECT id,statement FROM predictions;");
+		auto query = db.query("SELECT id,statement,created,closes,settled FROM predictions;");
 		prediction[] result;
 		foreach (row; query) {
 			auto i = row.peek!int(0);
 			auto s = row.peek!string(1);
-			result ~= prediction(i,s,db);
+			auto created = row.peek!string(2);
+			auto closes  = row.peek!string(3);
+			auto settled = row.peek!string(4);
+			result ~= prediction(i,s,created,closes,settled,db);
 		}
 		return result;
+	}
+
+	void createPrediction(string stmt, string closes) {
+		SysTime now = Clock.currTime;
+		auto q = db.query("INSERT INTO predictions VALUES (NULL, ?, ?, ?, NULL);");
+		q.bind(1,stmt);
+		q.bind(2,now.toISOExtString());
+		assert (SysTime.fromISOExtString(closes) > now);
+		q.bind(3,closes);
+		q.execute();
 	}
 }
 
@@ -65,10 +91,14 @@ struct prediction {
 	int id;
 	string statement;
 	int yes_shares, no_shares;
+	string created, closes, settled;
 	@disable this();
-	this(int id, string statement, Database db) {
+	this(int id, string statement, string created, string closes, string settled, Database db) {
 		this.id = id;
 		this.statement = statement;
+		this.created = created;
+		this.closes = closes;
+		this.settled = settled;
 		auto query = db.query("SELECT share_count, yes_order FROM orders WHERE prediction = ?");
 		query.bind(1, id);
 		foreach (row; query) {
@@ -81,6 +111,7 @@ struct prediction {
 			}
 		}
 	}
+
 	/* chance that statement happens according to current market */
 	real chance() const pure @safe nothrow {
 		return LMSR_chance(b, yes_shares, no_shares);
@@ -92,6 +123,54 @@ struct prediction {
 		sink(" ");
 		sink.formattedWrite("%.2f%%", chance*100);
 		sink(")");
+	}
+}
+
+struct user {
+	int id;
+	string name, email;
+	real wealth;
+	@disable this();
+	this(int id, string name, string email, real wealth) {
+		assert (!isNaN(wealth));
+		this.id = id;
+		this.name = name;
+		this.email = email;
+		this.wealth = wealth;
+	}
+	this(int id, Database db) {
+		this.id = id;
+		auto query = db.query("SELECT id, name, email, wealth FROM users WHERE id = ?");
+		query.bind(1, id);
+		foreach (row; query) {
+			assert (id == row.peek!int(0));
+			name = row.peek!string(1);
+			email = row.peek!string(2);
+			wealth = row.peek!double(3);
+		}
+	}
+
+	void toString(scope void delegate(const(char)[]) sink) const {
+		sink("user(");
+		sink(email);
+		sink(")");
+	}
+}
+
+unittest {
+	const id = 1;
+	auto db = get_database();
+	auto admin = db.getUser(id);
+	assert (admin.id == id);
+	assert (admin.name == "root");
+	assert (admin.email == "root@localhost");
+	assert (admin.wealth > 0);
+	foreach (u; db.users) {
+		assert (admin.id == u.id);
+		assert (admin.name == u.name);
+		assert (admin.email == u.email);
+		assert (admin.wealth == u.wealth, text(admin.wealth)~" != "~text(u.wealth));
+		break;
 	}
 }
 
@@ -152,6 +231,17 @@ unittest {
 
 unittest {
 	auto db = get_database();
-	writeln(db.users);
-	writeln(db.predictions);
+	db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00");
+	db.createPrediction("Michelle Obama becomes president.", "2015-12-12T05:45:55+00:00");
+	SysTime now = Clock.currTime;
+	foreach (p; db.predictions) {
+		assert (p.statement);
+		assert (p.chance >= 0.0);
+		assert (p.chance <= 1.0);
+		assert (SysTime.fromISOExtString(p.created) != now);
+		assert (SysTime.fromISOExtString(p.closes)  != now);
+		if (p.settled != "")
+			assert (SysTime.fromISOExtString(p.settled)  < now);
+	}
 }
+
