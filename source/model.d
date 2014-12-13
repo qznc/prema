@@ -6,6 +6,12 @@ import std.math: log, exp, isNaN;
 import std.conv: text;
 import std.format: formatValue, singleSpec, formattedWrite;
 import std.datetime: Clock, SysTime;
+import std.exception: enforce;
+
+enum share_type {
+	yes = 1,
+	no = 2
+}
 
 void init_empty_db(Database db) {
 	db.execute("
@@ -15,7 +21,7 @@ void init_empty_db(Database db) {
 		email TEXT NOT NULL,
 		wealth REAL
 		);
-	INSERT INTO users VALUES (NULL, 'root', 'root@localhost', 1000);
+	INSERT INTO users VALUES (1, 'root', 'root@localhost', 1000);
 	INSERT INTO users VALUES (NULL, 'dummy', 'nobody@localhost', 1000);
 	CREATE TABLE predictions (
 		id INTEGER PRIMARY KEY,
@@ -29,10 +35,9 @@ void init_empty_db(Database db) {
 		user INTEGER, /* who traded? */
 		prediction INTEGER, /* which prediction? */
 		share_count INTEGER, /* amount of shares traded */
-		yes_order INTEGER, /* what was bought 1=yes, 0=no */
+		yes_order INTEGER, /* what was bought 1=yes, 2=no */
 		price REAL /* might be negative! */
 		);
-	INSERT INTO orders VALUES (NULL, 1, 1, 100, 0, 62.0);
 	");
 }
 
@@ -46,6 +51,10 @@ struct database {
 
 	user getUser(int id) {
 		return user(id, db);
+	}
+
+	prediction getPrediction(int id) {
+		return prediction(id, db);
 	}
 
 	user[] users() {
@@ -81,8 +90,33 @@ struct database {
 		auto q = db.query("INSERT INTO predictions VALUES (NULL, ?, ?, ?, NULL);");
 		q.bind(1,stmt);
 		q.bind(2,now.toISOExtString());
-		assert (SysTime.fromISOExtString(closes) > now);
+		enforce (SysTime.fromISOExtString(closes) > now, "closes date must be in the future");
 		q.bind(3,closes);
+		q.execute();
+	}
+
+	void buy(ref user u, ref prediction p, int amount, share_type t, real price) {
+		enforce (p.cost(amount,t) == price, "assumed the wrong price: "~text(p.cost(amount,t))~" != "~text(price));
+		enforce (u.wealth >= price, "not enough wealth: "~text(u.wealth)~" < "~text(price));
+		/* update local data */
+		if (t == share_type.yes) {
+			p.yes_shares += amount;
+		} else {
+			assert (t == share_type.no);
+			p.no_shares += amount;
+		}
+		u.wealth -= price;
+		/* update database */
+		auto q = db.query("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
+		q.bind(1, u.id);
+		q.bind(2, p.id);
+		q.bind(3, amount);
+		q.bind(4, t);
+		q.bind(5, price);
+		q.execute();
+		q = db.query("UPDATE users SET wealth = ? WHERE id = ?;");
+		q.bind(1, u.wealth);
+		q.bind(2, u.id);
 		q.execute();
 	}
 }
@@ -93,21 +127,40 @@ struct prediction {
 	int yes_shares, no_shares;
 	string created, closes, settled;
 	@disable this();
+	this(int id, Database db) {
+		auto query = db.query("SELECT id,statement,created,closes,settled FROM predictions WHERE id = ?;");
+		query.bind(1, id);
+		foreach (row; query) {
+			this.id = row.peek!int(0);
+			assert (this.id == id);
+			this.statement = row.peek!string(1);
+			this.created = row.peek!string(2);
+			this.closes  = row.peek!string(3);
+			this.settled = row.peek!string(4);
+			break;
+		}
+		loadShares(db);
+	}
 	this(int id, string statement, string created, string closes, string settled, Database db) {
 		this.id = id;
 		this.statement = statement;
 		this.created = created;
 		this.closes = closes;
 		this.settled = settled;
+		loadShares(db);
+	}
+
+	private void loadShares(Database db) {
 		auto query = db.query("SELECT share_count, yes_order FROM orders WHERE prediction = ?");
 		query.bind(1, id);
 		foreach (row; query) {
+			auto amount = row.peek!int(0);
 			auto y = row.peek!int(1);
 			if (y == 1) {
-				yes_shares += row.peek!int(0);
+				yes_shares += amount;
 			} else {
-				assert (y == 0);
-				no_shares += row.peek!int(0);
+				assert (y == 2);
+				no_shares += amount;
 			}
 		}
 	}
@@ -115,6 +168,16 @@ struct prediction {
 	/* chance that statement happens according to current market */
 	real chance() const pure @safe nothrow {
 		return LMSR_chance(b, yes_shares, no_shares);
+	}
+
+	/* cost of buying a certain amount of shares */
+	real cost(int amount, share_type t) pure const @safe nothrow {
+		if (t == share_type.yes) {
+			return LMSR_cost(b, yes_shares, no_shares, amount);
+		} else {
+			assert (t == share_type.no);
+			return LMSR_cost(b, no_shares, yes_shares, amount);
+		}
 	}
 
 	void toString(scope void delegate(const(char)[]) sink) const {
@@ -133,6 +196,7 @@ struct user {
 	@disable this();
 	this(int id, string name, string email, real wealth) {
 		assert (!isNaN(wealth));
+		assert (wealth >= 0);
 		this.id = id;
 		this.name = name;
 		this.email = email;
@@ -243,5 +307,34 @@ unittest {
 		if (p.settled != "")
 			assert (SysTime.fromISOExtString(p.settled)  < now);
 	}
+}
+
+unittest {
+	auto db = get_database();
+	auto stmt = "This app will be actually used.";
+	db.createPrediction(stmt, "2015-02-02T05:45:55+00:00");
+	auto admin = db.getUser(1);
+	assert (admin.email == "root@localhost");
+	auto pred = db.getPrediction(1);
+	assert (pred.statement == stmt);
+	void assert_roughly(real a, real b) {
+		immutable real epsilon = 0.001;
+		assert (a+epsilon > b && b > a-epsilon, text(a)~" !~ "~text(b));
+	}
+	assert (pred.yes_shares == 0, text(pred.yes_shares));
+	assert (pred.no_shares == 0, text(pred.no_shares));
+	assert_roughly (pred.chance, 0.5);
+	auto price = pred.cost(10, share_type.no);
+	assert_roughly (price, 5.1249);
+	assert (pred.cost(10, share_type.yes) == price);
+	db.buy(admin, pred, 10, share_type.no, price);
+	assert (pred.cost(10, share_type.no) > price, text(pred.cost(10, share_type.no))~" !> "~text(price));
+	/* check for database state */
+	auto admin2 = db.getUser(1);
+	auto pred2 = db.getPrediction(1);
+	assert (pred.yes_shares == 0, text(pred.yes_shares));
+	assert (pred.no_shares == 10, text(pred.no_shares));
+	auto price2 = pred.cost(10, share_type.no);
+	assert_roughly (price2, 5.37422);
 }
 
