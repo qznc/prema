@@ -7,6 +7,7 @@ import std.conv: text;
 import std.format: formatValue, singleSpec, formattedWrite;
 import std.datetime: Clock, SysTime;
 import std.exception: enforce;
+import std.file: exists;
 
 enum share_type {
 	yes = 1,
@@ -223,7 +224,7 @@ struct user {
 
 unittest {
 	const id = 1;
-	auto db = get_database();
+	auto db = getMemoryDatabase();
 	auto admin = db.getUser(id);
 	assert (admin.id == id);
 	assert (admin.name == "root");
@@ -238,7 +239,18 @@ unittest {
 	}
 }
 
-database get_database() {
+database getDatabase() {
+	auto path = "prema.sqlite3";
+	bool init = !exists(path);
+	auto db = database(path);
+	if (init) {
+		init_empty_db(db.db);
+		db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00");
+	}
+	return db;
+}
+
+database getMemoryDatabase() {
 	auto db = database(":memory:");
 	init_empty_db(db.db);
 	return db;
@@ -294,7 +306,7 @@ unittest {
 }
 
 unittest {
-	auto db = get_database();
+	auto db = getMemoryDatabase();
 	db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00");
 	db.createPrediction("Michelle Obama becomes president.", "2015-12-12T05:45:55+00:00");
 	SysTime now = Clock.currTime;
@@ -310,7 +322,7 @@ unittest {
 }
 
 unittest {
-	auto db = get_database();
+	auto db = getMemoryDatabase();
 	auto stmt = "This app will be actually used.";
 	db.createPrediction(stmt, "2015-02-02T05:45:55+00:00");
 	auto admin = db.getUser(1);

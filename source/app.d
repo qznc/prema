@@ -4,6 +4,7 @@ LICENSE: http://www.apache.org/licenses/LICENSE-2.0
 */
 
 import vibe.d;
+import model;
 
 static immutable host = "127.0.0.1";
 
@@ -37,14 +38,15 @@ shared static this()
 
 void index(HTTPServerRequest req, HTTPServerResponse res)
 {
-	logInfo("index");
 	auto pageTitle = "Prema Prediction Market";
 	string userEmail = "";
 	if (req.session) {
 		logInfo("index logged in");
 		userEmail = req.session.get("userEmail", "");
 	}
-	res.render!("index.dt", pageTitle, userEmail, req);
+	auto db = getDatabase();
+	auto predictions = db.predictions;
+	res.render!("index.dt", pageTitle, userEmail, predictions, req);
 }
 
 void protect(HTTPServerRequest req, HTTPServerResponse res)
@@ -52,10 +54,11 @@ void protect(HTTPServerRequest req, HTTPServerResponse res)
 	auto pageTitle = "Internal Prema Prediction Market";
 	string userEmail = "";
 	if (req.session) {
-		logInfo("index logged in");
 		userEmail = req.session.get("userEmail", "");
 	}
-	res.render!("index.dt", pageTitle, userEmail, req);
+	auto db = getDatabase();
+	auto predictions = db.predictions;
+	res.render!("index.dt", pageTitle, userEmail, predictions, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
@@ -68,7 +71,6 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 
 	requestHTTP("https://verifier.login.persona.org/verify",
 		(scope req) {
-			logInfo("create POST request");
 			req.method = HTTPMethod.POST;
 			req.contentType = "application/x-www-form-urlencoded";
 			auto bdy = "assertion="~ass~"&audience="~audience;

@@ -5,3 +5,5 @@ __dummy.html
 *.obj
 prema
 __test__library__
+*.sqlite
+*.sqlite3
