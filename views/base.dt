@@ -62,4 +62,8 @@ html
 				xhr.send(null);
 				xhr.onreadystatechange = simpleXhrSentinel(xhr); }
 
-		| <script type="text/javascript">navigator.id.watch( { loggedInUser: "#{userEmail}", onlogin: verifyAssertion, onlogout: signoutUser } );</script>
+		- if (req.session)
+			| <script type="text/javascript">navigator.id.watch( { loggedInUser: "#{req.session.get("userEmail","")}", onlogin: verifyAssertion, onlogout: signoutUser } );</script>
+		- if (!req.session)
+			| <script type="text/javascript">navigator.id.watch( { loggedInUser: "", onlogin: verifyAssertion, onlogout: signoutUser } );</script>
+		- else

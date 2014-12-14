@@ -41,39 +41,29 @@ shared static this()
 void index(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto pageTitle = "Prema Prediction Market";
-	string userEmail = "";
 	if (req.session) {
 		logInfo("index logged in");
-		userEmail = req.session.get("userEmail", "");
 	}
 	auto db = getDatabase();
 	auto predictions = db.predictions;
-	res.render!("index.dt", pageTitle, userEmail, predictions, req);
+	res.render!("index.dt", pageTitle, predictions, req);
 }
 
 void protect(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto pageTitle = "Internal Prema Prediction Market";
-	string userEmail = "";
-	if (req.session) {
-		userEmail = req.session.get("userEmail", "");
-	}
 	auto db = getDatabase();
 	auto predictions = db.predictions;
-	res.render!("index.dt", pageTitle, userEmail, predictions, req);
+	res.render!("index.dt", pageTitle, predictions, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
-	string userEmail = "";
-	if (req.session) {
-		userEmail = req.session.get("userEmail", "");
-	}
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
-	string pageTitle = "pageTitle";
-	res.render!("prediction.dt", pageTitle, pred, userEmail, req);
+	string pageTitle = pred.statement;
+	res.render!("prediction.dt", pageTitle, pred, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
