@@ -1,0 +1,5 @@
+extends base
+
+block body
+	h1 #{pred.statement}
+		span(class="chance") #{pred.chance * 100}%

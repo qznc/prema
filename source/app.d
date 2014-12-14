@@ -5,6 +5,7 @@ LICENSE: http://www.apache.org/licenses/LICENSE-2.0
 
 import vibe.d;
 import model;
+import std.conv: to;
 
 static immutable host = "127.0.0.1";
 
@@ -13,6 +14,7 @@ shared static this()
 	auto router = new URLRouter;
 	router
 		.get("/", &index)
+		.get("/p/:predID", &prediction)
 		.post("/login", &verifyPersona)
 		.any("/logout", &logout)
 	;
@@ -59,6 +61,19 @@ void protect(HTTPServerRequest req, HTTPServerResponse res)
 	auto db = getDatabase();
 	auto predictions = db.predictions;
 	res.render!("index.dt", pageTitle, userEmail, predictions, req);
+}
+
+void prediction(HTTPServerRequest req, HTTPServerResponse res)
+{
+	string userEmail = "";
+	if (req.session) {
+		userEmail = req.session.get("userEmail", "");
+	}
+	auto id = to!int(req.params["predID"]);
+	auto db = getDatabase();
+	auto pred = db.getPrediction(id);
+	string pageTitle = "pageTitle";
+	res.render!("prediction.dt", pageTitle, pred, userEmail, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
