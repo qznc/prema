@@ -1,5 +1,31 @@
 extends base
 
 block body
-	h1 #{pred.statement}
-		span(class="chance") #{pred.chance * 100}%
+	table
+		tr
+			th yes
+			td #{pred.yes_shares}
+		tr
+			th no
+			td #{pred.no_shares}
+		tr
+			th chance
+			td #{pred.chance * 100}%
+	form(method="POST")
+		p
+			select
+				option(value="buy") Buy
+				option(value="sell") Sell
+			input(type="text", value="0")
+			| shares of type
+			select
+				option(value="yes") yes
+				option(value="no") no
+			| for
+			span(class="price") 0.00€
+			| which changes the chance to
+			span(class="chance") #{pred.chance*100}%
+			|.
+		p
+			button Do it
+

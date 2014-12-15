@@ -16,7 +16,9 @@ html
 					button#signin(onclick='javascript:navigator.id.request()') Sign In
 				- else
 					button#signout(onclick='javascript:navigator.id.logout()') Sign Out
-			p Header text
+			p
+				a(href="/") Home
+				a(href="/about") About
 
 		article
 			block body
