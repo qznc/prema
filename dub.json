@@ -1,13 +1,13 @@
 {
 	"name": "prema",
 	"description": "A prediction market web server.",
-	"copyright": "Copyright © 2014, Andreas Zwinkau",
+	"copyright": "Copyright © 2014-2015, Andreas Zwinkau",
 	"licence": "Apache Licence 2",
 	"authors": ["Andreas Zwinkau <qznc@web.de>"],
 	"dependencies": {
-		"d2sqlite3": ">=0.5.2",
+		"d2sqlite3": "~>0.7.3",
 		"vibe-d": "~>0.7.19"
 	},
 	"versions": ["VibeDefaultMain"],
-	"libs": ["sqlite3"],
+	"lflags": ["sqlite3/libsqlite3.so"],
 }

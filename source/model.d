@@ -15,31 +15,29 @@ enum share_type {
 }
 
 void init_empty_db(Database db) {
-	db.execute("
-	CREATE TABLE users (
+	db.execute("CREATE TABLE users (
 		id INTEGER PRIMARY KEY,
 		name TEXT NOT NULL,
 		email TEXT NOT NULL,
 		wealth REAL
-		);
-	INSERT INTO users VALUES (1, 'root', 'root@localhost', 1000);
-	INSERT INTO users VALUES (NULL, 'dummy', 'nobody@localhost', 1000);
-	CREATE TABLE predictions (
+		);");
+	db.execute("INSERT INTO users VALUES (1, 'root', 'root@localhost', 1000);");
+	db.execute("INSERT INTO users VALUES (NULL, 'dummy', 'nobody@localhost', 1000);");
+	db.execute("CREATE TABLE predictions (
 		id INTEGER PRIMARY KEY,
 		statement TEXT NOT NULL,
 		created TEXT NOT NULL, /* ISO8601 date */
 		closes TEXT NOT NULL, /* ISO8601 date */
 		settled TEXT /* ISO8601 date */
-		);
-	CREATE TABLE orders (
+		);");
+	db.execute("CREATE TABLE orders (
 		id INTEGER PRIMARY KEY,
 		user INTEGER, /* who traded? */
 		prediction INTEGER, /* which prediction? */
 		share_count INTEGER, /* amount of shares traded */
 		yes_order INTEGER, /* what was bought 1=yes, 2=no */
 		price REAL /* might be negative! */
-		);
-	");
+		);");
 }
 
 struct database {
@@ -59,7 +57,7 @@ struct database {
 	}
 
 	user[] users() {
-		auto query = db.query("SELECT id,name,email,wealth FROM users ORDER BY id;");
+		auto query = db.execute("SELECT id,name,email,wealth FROM users ORDER BY id;");
 		user[] result;
 		foreach (row; query) {
 			auto id = row.peek!int(0);
@@ -73,7 +71,7 @@ struct database {
 	}
 
 	prediction[] predictions() {
-		auto query = db.query("SELECT id,statement,created,closes,settled FROM predictions;");
+		auto query = db.execute("SELECT id,statement,created,closes,settled FROM predictions;");
 		prediction[] result;
 		foreach (row; query) {
 			auto i = row.peek!int(0);
@@ -88,7 +86,7 @@ struct database {
 
 	void createPrediction(string stmt, string closes) {
 		SysTime now = Clock.currTime;
-		auto q = db.query("INSERT INTO predictions VALUES (NULL, ?, ?, ?, NULL);");
+		auto q = db.prepare("INSERT INTO predictions VALUES (NULL, ?, ?, ?, NULL);");
 		q.bind(1,stmt);
 		q.bind(2,now.toISOExtString());
 		enforce (SysTime.fromISOExtString(closes) > now, "closes date must be in the future");
@@ -108,14 +106,14 @@ struct database {
 		}
 		u.wealth -= price;
 		/* update database */
-		auto q = db.query("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
+		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
 		q.bind(1, u.id);
 		q.bind(2, p.id);
 		q.bind(3, amount);
 		q.bind(4, t);
 		q.bind(5, price);
 		q.execute();
-		q = db.query("UPDATE users SET wealth = ? WHERE id = ?;");
+		q = db.prepare("UPDATE users SET wealth = ? WHERE id = ?;");
 		q.bind(1, u.wealth);
 		q.bind(2, u.id);
 		q.execute();
@@ -129,9 +127,9 @@ struct prediction {
 	string created, closes, settled;
 	@disable this();
 	this(int id, Database db) {
-		auto query = db.query("SELECT id,statement,created,closes,settled FROM predictions WHERE id = ?;");
+		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE id = ?;");
 		query.bind(1, id);
-		foreach (row; query) {
+		foreach (row; query.execute()) {
 			this.id = row.peek!int(0);
 			assert (this.id == id);
 			this.statement = row.peek!string(1);
@@ -152,9 +150,9 @@ struct prediction {
 	}
 
 	private void loadShares(Database db) {
-		auto query = db.query("SELECT share_count, yes_order FROM orders WHERE prediction = ?");
+		auto query = db.prepare("SELECT share_count, yes_order FROM orders WHERE prediction = ?");
 		query.bind(1, id);
-		foreach (row; query) {
+		foreach (row; query.execute()) {
 			auto amount = row.peek!int(0);
 			auto y = row.peek!int(1);
 			if (y == 1) {
@@ -205,9 +203,9 @@ struct user {
 	}
 	this(int id, Database db) {
 		this.id = id;
-		auto query = db.query("SELECT id, name, email, wealth FROM users WHERE id = ?");
+		auto query = db.prepare("SELECT id, name, email, wealth FROM users WHERE id = ?");
 		query.bind(1, id);
-		foreach (row; query) {
+		foreach (row; query.execute()) {
 			assert (id == row.peek!int(0));
 			name = row.peek!string(1);
 			email = row.peek!string(2);
@@ -245,7 +243,7 @@ database getDatabase() {
 	auto db = database(path);
 	if (init) {
 		init_empty_db(db.db);
-		db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00");
+		db.createPrediction("This app will actually be used.", "2016-02-02T05:45:55+00:00");
 	}
 	return db;
 }

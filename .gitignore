@@ -7,3 +7,5 @@ prema
 __test__library__
 *.sqlite
 *.sqlite3
+sqlite3
+libsqlite3.*
