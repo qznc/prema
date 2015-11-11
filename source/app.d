@@ -27,6 +27,7 @@ shared static this()
 	router
 		.any("*", &checkLogin)
 		.get("/protect", &protect)
+		.post("/p/:predID", &change_prediction)
 	;
 
 	auto settings = new HTTPServerSettings;
@@ -58,6 +59,15 @@ void protect(HTTPServerRequest req, HTTPServerResponse res)
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
+{
+	auto id = to!int(req.params["predID"]);
+	auto db = getDatabase();
+	auto pred = db.getPrediction(id);
+	string pageTitle = pred.statement;
+	res.render!("prediction.dt", pageTitle, pred, req);
+}
+
+void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
