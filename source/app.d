@@ -15,6 +15,7 @@ shared static this()
 	router
 		.get("/", &index)
 		.get("/p/:predID", &prediction)
+		.get("/u/:predID", &show_user)
 		.post("/login", &verifyPersona)
 		.any("/logout", &logout)
 	;
@@ -81,6 +82,15 @@ void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
 	db.buy(user, pred, amount, type);
 	string pageTitle = pred.statement;
 	res.render!("prediction.dt", pageTitle, pred, req);
+}
+
+void show_user(HTTPServerRequest req, HTTPServerResponse res)
+{
+	auto id = to!int(req.params["predID"]);
+	auto db = getDatabase();
+	auto user = db.getUser(id);
+	string pageTitle = user.name;
+	res.render!("user.dt", pageTitle, user, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
