@@ -1,6 +1,7 @@
 /** Data Model and Persistence **/
 
 import d2sqlite3;
+import std.algorithm: findSplitBefore;
 import std.stdio: writeln;
 import std.math: log, exp, isNaN;
 import std.conv: text;
@@ -52,6 +53,10 @@ struct database {
 		return user(id, db);
 	}
 
+	user getUser(const(string) email) {
+		return user(email, db);
+	}
+
 	prediction getPrediction(int id) {
 		return prediction(id, db);
 	}
@@ -96,6 +101,10 @@ struct database {
 
 	void buy(ref user u, ref prediction p, int amount, share_type t, real price) {
 		enforce (p.cost(amount,t) == price, "assumed the wrong price: "~text(p.cost(amount,t))~" != "~text(price));
+		buy(u,p,amount,t);
+	}
+	void buy(ref user u, ref prediction p, int amount, share_type t) {
+		auto price = p.cost(amount,t);
 		enforce (u.wealth >= price, "not enough wealth: "~text(u.wealth)~" < "~text(price));
 		/* update local data */
 		if (t == share_type.yes) {
@@ -188,6 +197,11 @@ struct prediction {
 	}
 }
 
+string emailPrefix(const(string) email) {
+	auto r = findSplitBefore(email, "@");
+	return r[0];
+}
+
 struct user {
 	int id;
 	string name, email;
@@ -210,6 +224,27 @@ struct user {
 			name = row.peek!string(1);
 			email = row.peek!string(2);
 			wealth = row.peek!double(3);
+		}
+	}
+	this(const(string) email, Database db) {
+		this.email = email;
+		auto query = db.prepare("SELECT id, name, email, wealth FROM users WHERE email = ?");
+		query.bind(1, email);
+		foreach (row; query.execute()) {
+			assert (email == row.peek!string(2));
+			id = row.peek!int(0);
+			name = row.peek!string(1);
+			wealth = row.peek!double(3);
+		}
+		if (wealth != wealth) { // query returned zero rows
+			wealth = 1000;
+			name = emailPrefix(email);
+			auto q = db.prepare("INSERT INTO users VALUES (NULL, ?, ?, ?);");
+			q.bind(1, name);
+			q.bind(2, email);
+			q.bind(3, wealth);
+			q.execute();
+			writeln("create user in db");
 		}
 	}
 

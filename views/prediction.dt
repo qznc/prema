@@ -13,12 +13,12 @@ block body
 			td #{pred.chance * 100}%
 	form(method="POST")
 		p
-			select
+			select(name="buy_or_sell")
 				option(value="buy") Buy
 				option(value="sell") Sell
-			input(type="text", value="0")
+			input(type="text", value="0", name="amount")
 			| shares of type
-			select
+			select(name="type")
 				option(value="yes") yes
 				option(value="no") no
 			| for

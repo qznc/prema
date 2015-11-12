@@ -69,9 +69,16 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
 
 void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
+	assert (req.method == HTTPMethod.POST);
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
+	auto email = req.session.get!string("userEmail");
+	auto user = db.getUser(email);
+	logInfo("change user="~to!string(user));
+	auto amount = to!int(req.form["amount"]);
+	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
+	db.buy(user, pred, amount, type);
 	string pageTitle = pred.statement;
 	res.render!("prediction.dt", pageTitle, pred, req);
 }
