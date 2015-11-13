@@ -75,8 +75,7 @@ struct database {
 		return result;
 	}
 
-	prediction[] predictions() {
-		auto query = db.execute("SELECT id,statement,created,closes,settled FROM predictions;");
+	private auto parsePredictionQuery(ResultRange query) {
 		prediction[] result;
 		foreach (row; query) {
 			auto i = row.peek!int(0);
@@ -87,6 +86,20 @@ struct database {
 			result ~= prediction(i,s,created,closes,settled,db);
 		}
 		return result;
+	}
+
+	prediction[] activePredictions() {
+		SysTime now = Clock.currTime;
+		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE closes > ?;");
+		query.bind(1, now.toISOExtString());
+		return parsePredictionQuery(query.execute());
+	}
+
+	prediction[] predictionsToSettle() {
+		SysTime now = Clock.currTime;
+		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE closes < ? AND settled IS NULL;");
+		query.bind(1, now.toISOExtString());
+		return parsePredictionQuery(query.execute());
 	}
 
 	void createPrediction(string stmt, string closes) {

@@ -28,7 +28,6 @@ shared static this()
 	/* protected sites below */
 	router
 		.any("*", &checkLogin)
-		.get("/protect", &protect)
 		.get("/create", &get_create)
 		.post("/create", &post_create)
 		.post("/p/:predID", &change_prediction)
@@ -47,16 +46,9 @@ void index(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto pageTitle = "Prema Prediction Market";
 	auto db = getDatabase();
-	auto predictions = db.predictions;
-	res.render!("index.dt", pageTitle, predictions, req);
-}
-
-void protect(HTTPServerRequest req, HTTPServerResponse res)
-{
-	auto pageTitle = "Internal Prema Prediction Market";
-	auto db = getDatabase();
-	auto predictions = db.predictions;
-	res.render!("index.dt", pageTitle, predictions, req);
+	auto active = db.activePredictions();
+	auto toSettle = db.predictionsToSettle();
+	res.render!("index.dt", pageTitle, active, toSettle, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)

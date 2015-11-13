@@ -1,9 +1,15 @@
 extends base
 
 block body
-	ul
-		- foreach(i,pred; predictions)
-			li
-				a(href="/p/#{pred.id}") #{pred.statement}
-				span(class="chance") #{pred.chance * 100}%
-				time(class="end") #{pred.closes}
+	- import model: prediction;
+	- void predList(prediction[] preds)
+		ul
+			- foreach(i,pred; preds)
+				li
+					a(href="/p/#{pred.id}") #{pred.statement}
+					span(class="chance") #{pred.chance * 100}%
+					time(class="end") #{pred.closes}
+	h2 Active Predictions
+	- predList(active);
+	h2 Predictions to Settle
+	- predList(toSettle);
