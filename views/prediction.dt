@@ -21,21 +21,31 @@ block body
 			tr
 				th settled
 				td #{pred.settled}
-	form(method="POST")
+	- if (!closed)
+		form(method="POST")
+			p
+				select(name="buy_or_sell")
+					option(value="buy") Buy
+					option(value="sell") Sell
+				input(type="text", value="0", name="amount")
+				| shares of type
+				select(name="type")
+					option(value="yes") yes
+					option(value="no") no
+				| for
+				span(class="price") 0.00€
+				| which changes the chance to
+				span(class="chance") #{pred.chance*100}%
+				|.
+			p
+				button Do it
+	- if (closed && !settled)
 		p
-			select(name="buy_or_sell")
-				option(value="buy") Buy
-				option(value="sell") Sell
-			input(type="text", value="0", name="amount")
-			| shares of type
-			select(name="type")
-				option(value="yes") yes
-				option(value="no") no
-			| for
-			span(class="price") 0.00€
-			| which changes the chance to
-			span(class="chance") #{pred.chance*100}%
-			|.
-		p
-			button Do it
+			form(method="POST", action="/settle")
+				input(type="hidden", name="predid", value="#{pred.id}")
+				button(name="settlement", value="true") Settle as True
+				| or
+				button(name="settlement", value="false") Settle as False
+	- if (closed && settled)
+		p Prediction is settled.
 

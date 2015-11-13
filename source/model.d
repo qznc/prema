@@ -28,8 +28,10 @@ void init_empty_db(Database db) {
 		id INTEGER PRIMARY KEY,
 		statement TEXT NOT NULL,
 		created TEXT NOT NULL, /* ISO8601 date */
+		creator INTEGER, /* id from users */
 		closes TEXT NOT NULL, /* ISO8601 date */
-		settled TEXT /* ISO8601 date */
+		settled TEXT, /* ISO8601 date */
+		result TEXT /* yes or no */
 		);");
 	db.execute("CREATE TABLE orders (
 		id INTEGER PRIMARY KEY,
@@ -184,6 +186,15 @@ struct prediction {
 				no_shares += amount;
 			}
 		}
+	}
+
+	void settle(database db, bool result) {
+		auto now = Clock.currTime.toISOExtString;
+		auto query = db.db.prepare("UPDATE predictions SET settled=? WHERE id=?;");
+		query.bind(1, now);
+		query.bind(2, this.id);
+		query.execute();
+		this.settled = now;
 	}
 
 	/* chance that statement happens according to current market */

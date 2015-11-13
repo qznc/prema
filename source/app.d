@@ -30,6 +30,7 @@ shared static this()
 		.any("*", &checkLogin)
 		.get("/create", &get_create)
 		.post("/create", &post_create)
+		.post("/settle", &post_settle)
 		.post("/p/:predID", &change_prediction)
 	;
 
@@ -51,13 +52,21 @@ void index(HTTPServerRequest req, HTTPServerResponse res)
 	res.render!("index.dt", pageTitle, active, toSettle, req);
 }
 
+void renderPrediction(model.prediction pred, HTTPServerRequest req, HTTPServerResponse res)
+{
+	auto now = Clock.currTime.toISOExtString;
+	auto closed = now > pred.closes;
+	auto settled = pred.settled !is null;
+	string pageTitle = pred.statement;
+	res.render!("prediction.dt", pageTitle, pred, closed, settled, req);
+}
+
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
-	string pageTitle = pred.statement;
-	res.render!("prediction.dt", pageTitle, pred, req);
+	renderPrediction(pred, req, res);
 }
 
 void get_create(HTTPServerRequest req, HTTPServerResponse res)
@@ -107,12 +116,26 @@ void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
 	auto pred = db.getPrediction(id);
 	auto email = req.session.get!string("userEmail");
 	auto user = db.getUser(email);
-	logInfo("change user="~to!string(user));
 	auto amount = to!int(req.form["amount"]);
 	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
 	db.buy(user, pred, amount, type);
-	string pageTitle = pred.statement;
-	res.render!("prediction.dt", pageTitle, pred, req);
+
+	renderPrediction(pred, req, res);
+}
+
+void post_settle(HTTPServerRequest req, HTTPServerResponse res)
+{
+	assert (req.method == HTTPMethod.POST);
+	auto id = to!int(req.form["predid"]);
+	auto db = getDatabase();
+	auto pred = db.getPrediction(id);
+	auto email = req.session.get!string("userEmail");
+	auto user = db.getUser(email);
+	//assert (user.id == pred.creator);
+	auto result = req.form["settlement"] == "true";
+	pred.settle(db, result);
+
+	renderPrediction(pred, req, res);
 }
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
@@ -130,7 +153,6 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 			HTTPStatus.badRequest, "Missing assertion field.");
 	const ass = req.form["assertion"];
 	const audience = "http://"~host~":8080/";
-	logInfo("verifyPersona");
 
 	requestHTTP("https://verifier.login.persona.org/verify",
 		(scope req) {
@@ -156,7 +178,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 			auto user = db.getUser(email);
 			session.set("userId", user.id);
 			session.set("userName", user.name);
-			logInfo("Successfully logged in");
+			logInfo("Successfully logged in "~text(user.name));
 		});
 	res.bodyWriter.write("ok");
 }
@@ -168,7 +190,6 @@ void logout(HTTPServerRequest req, HTTPServerResponse res)
 		res.terminateSession();
 		res.redirect("/");
 	} else {
-		logInfo("nothing to logout");
 		res.statusCode = HTTPStatus.badRequest;
 		res.bodyWriter.write("nothing to logout");
 	}
