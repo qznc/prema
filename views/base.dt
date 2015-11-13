@@ -17,7 +17,7 @@ html
 				- else
 					button#signout(onclick='javascript:navigator.id.logout()') Sign Out
 			p
-				a(href="/") Home
+				a(href="/") Overview
 				a(href="/create") Create
 				a(href="/about") About
 				- if (req.session)

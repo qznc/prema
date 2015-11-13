@@ -11,6 +11,16 @@ block body
 		tr
 			th chance
 			td #{pred.chance * 100}%
+		tr
+			th created
+			td #{pred.created}
+		tr
+			th closes
+			td #{pred.closes}
+		- if (pred.settled != "")
+			tr
+				th settled
+				td #{pred.settled}
 	form(method="POST")
 		p
 			select(name="buy_or_sell")

@@ -1,9 +1,9 @@
 extends base
 
 block body
-	p This will be a prediction market.
 	ul
 		- foreach(i,pred; predictions)
 			li
 				a(href="/p/#{pred.id}") #{pred.statement}
 				span(class="chance") #{pred.chance * 100}%
+				time(class="end") #{pred.closes}

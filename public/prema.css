@@ -4,18 +4,39 @@ html, body { font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans",
 
 footer { font-size: 0.8em; }
 
-/** COLORS **/
+table th { font-weight: normal; padding-right: 1em; }
 
-body { background-color: #fffede; color: #111; }
+/** COLORS **/
+/* Scheme: #012744, #155764, #588681, #8c9c88, #f2dbae */
+
+header a:hover,
+body { background-color: #f2dbae; color: #012744; }
 
 header,
-footer { background-color: #cecc68; }
+footer { background-color: #8c9c88; }
+
+a { color: #000; }
+a:hover { text-decoration: none; }
+
+li time { color: #155764; }
 
 /** POSITION & SIZE **/
+
+body { width: 40em; margin: 0 auto; }
 
 footer,
 header { padding: 1em; }
 
+header a { padding: 0 2px; }
+
 article { margin: 1em 1em; max-width: 40em; }
 
 #personaButtons { float: right; }
+
+table th { text-align: right; }
+
+li { margin: .5em 0; }
+
+li time { margin-left: 1em; }
+
+footer { padding-bottom: 20em; }
