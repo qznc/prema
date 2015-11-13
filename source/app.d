@@ -14,6 +14,7 @@ shared static this()
 	auto router = new URLRouter;
 	router
 		.get("/", &index)
+		.get("/about", &about)
 		.get("/p/:predID", &prediction)
 		.get("/u/:predID", &show_user)
 		.post("/login", &verifyPersona)
@@ -167,4 +168,24 @@ void checkLogin(HTTPServerRequest req, HTTPServerResponse res)
 	auto pageTitle = "Authentication Error";
 	res.statusCode = HTTPStatus.forbidden;
 	res.bodyWriter.write(pageTitle);
+}
+
+void about(HTTPServerRequest req, HTTPServerResponse res)
+{
+	auto pageTitle = "About Prema Prediction Market";
+	auto text = vibe.textfilter.markdown.filterMarkdown("
+Prema implements a [prediction market](https://en.wikipedia.org/wiki/Prediction_market).
+People input predictions and then buy and sell shares on them,
+similar to a stock market.
+Each prediction has 'yes' and 'no' shares with their prices linked.
+When a prediction can be verified,
+either yes or no shares get paid.
+So, buy those shares which you believe will be true
+and become rich (with play money).
+
+The price of the shares corresponds to a probability that the prediction is true.
+If many people participate,
+those probabilities tend to be very accurate.
+	", MarkdownFlags.none);
+	res.render!("plain.dt", pageTitle, text, req);
 }
