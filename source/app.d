@@ -73,7 +73,8 @@ void get_create(HTTPServerRequest req, HTTPServerResponse res)
 	auto time = Clock.currTime;
 	auto suggested_end = (time + dur!"days"(7)).toISOExtString;
 	string pageTitle = "Create New Prediction";
-	res.render!("create.dt", pageTitle, suggested_end, req);
+	string[] errors;
+	res.render!("create.dt", pageTitle, suggested_end, errors, req);
 }
 
 void post_create(HTTPServerRequest req, HTTPServerResponse res)
@@ -81,8 +82,29 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 	auto db = getDatabase();
 	auto pred = req.form["prediction"];
 	auto end = req.form["end"];
-	db.createPrediction(pred,end);
-	res.redirect("/");
+	string[] errors;
+	if (pred == "")
+		errors ~= "Prediction empty.";
+	if (end == "")
+		errors ~= "End date empty.";
+	try {
+		auto end_dt = SysTime.fromISOExtString(end);
+		auto time = Clock.currTime;
+		if (time > end_dt) {
+			errors ~= "End date must be in the future.";
+		}
+	} catch (DateTimeException e) {
+		errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.1188658.";
+	}
+	if (errors.empty) {
+		db.createPrediction(pred,end);
+		res.redirect("/");
+	} else {
+		string pageTitle = "Create New Prediction";
+		auto time = Clock.currTime;
+		auto suggested_end = (time + dur!"days"(7)).toISOExtString;
+		res.render!("create.dt", pageTitle, suggested_end, errors, req);
+	}
 }
 
 void change_prediction(HTTPServerRequest req, HTTPServerResponse res)

@@ -18,6 +18,8 @@ footer { background-color: #8c9c88; }
 a { color: #000; }
 a:hover { text-decoration: none; }
 
+.error { background-color: #f99; color: #600; border: 1px solid #600; }
+
 li time { color: #155764; }
 
 /** POSITION & SIZE **/
@@ -38,5 +40,7 @@ table th { text-align: right; }
 li { margin: .5em 0; }
 
 li time { margin-left: 1em; }
+
+.error { padding: .5em 1em; }
 
 footer { padding-bottom: 20em; }
