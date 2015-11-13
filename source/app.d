@@ -28,6 +28,8 @@ shared static this()
 	router
 		.any("*", &checkLogin)
 		.get("/protect", &protect)
+		.get("/create", &get_create)
+		.post("/create", &post_create)
 		.post("/p/:predID", &change_prediction)
 	;
 
@@ -66,6 +68,23 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
 	auto pred = db.getPrediction(id);
 	string pageTitle = pred.statement;
 	res.render!("prediction.dt", pageTitle, pred, req);
+}
+
+void get_create(HTTPServerRequest req, HTTPServerResponse res)
+{
+	auto time = Clock.currTime;
+	auto suggested_end = (time + dur!"days"(7)).toISOExtString;
+	string pageTitle = "Create New Prediction";
+	res.render!("create.dt", pageTitle, suggested_end, req);
+}
+
+void post_create(HTTPServerRequest req, HTTPServerResponse res)
+{
+	auto db = getDatabase();
+	auto pred = req.form["prediction"];
+	auto end = req.form["end"];
+	db.createPrediction(pred,end);
+	res.redirect("/");
 }
 
 void change_prediction(HTTPServerRequest req, HTTPServerResponse res)

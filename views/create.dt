@@ -1,0 +1,13 @@
+extends base
+
+block body
+	form(method="POST")
+		p
+			| I predict that
+			input(type="text", value="", name="prediction")
+			| and we can trade it until
+			input(type="text", value="#{suggested_end}", name="end")
+			| .
+		p
+			button Create
+

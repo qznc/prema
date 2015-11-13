@@ -18,6 +18,7 @@ html
 					button#signout(onclick='javascript:navigator.id.logout()') Sign Out
 			p
 				a(href="/") Home
+				a(href="/create") Create
 				a(href="/about") About
 
 		article
