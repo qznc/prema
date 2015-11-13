@@ -20,6 +20,10 @@ html
 				a(href="/") Home
 				a(href="/create") Create
 				a(href="/about") About
+				- if (req.session)
+					- auto userid = req.session.get!int("userId");
+					- auto username = req.session.get!string("userName");
+					a(href="/u/#{userid}") #{username}
 
 		article
 			block body

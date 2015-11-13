@@ -45,9 +45,6 @@ shared static this()
 void index(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto pageTitle = "Prema Prediction Market";
-	if (req.session) {
-		logInfo("index logged in");
-	}
 	auto db = getDatabase();
 	auto predictions = db.predictions;
 	res.render!("index.dt", pageTitle, predictions, req);
@@ -140,6 +137,10 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 			session.set("userEmail", email);
 			session.set("persona_expires", expires);
 			session.set("persona_issuer", issuer);
+			auto db = getDatabase();
+			auto user = db.getUser(email);
+			session.set("userId", user.id);
+			session.set("userName", user.name);
 			logInfo("Successfully logged in");
 		});
 	res.bodyWriter.write("ok");
