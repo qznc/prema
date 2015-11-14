@@ -52,7 +52,38 @@ block body
 				button(name="settlement", value="false") Settle as False
 	- if (closed && settled)
 		p Prediction is settled.
-	table
+	div(id="chance_history")
+	script(type="text/javascript", src="https://www.google.com/jsapi")
+	:javascript
+		google.load("visualization", "1", {packages:["corechart"]});
+		google.setOnLoadCallback(drawChart);
+		function getData() {
+		  var raw_data = [['Date', 'Chance']];
+		  var tbl = document.getElementById("raw_history");
+		  var trs = tbl.getElementsByTagName("tr");
+		  for(var i=0; i < trs.length; i++) {
+		    var th = trs[i].getElementsByTagName("th")[0];
+		    var date = new Date(th.innerHTML);
+		    var td = trs[i].getElementsByTagName("td")[0];
+		    var chance = td.innerHTML;
+		    chance = parseFloat(chance.substring(0,chance.length-1));
+		    raw_data.push([date, chance]);
+		  }
+		  return raw_data;
+		}
+		function drawChart() {
+		  var data = google.visualization.arrayToDataTable(getData());
+		  var options = {
+		    title: 'History of Chance',
+		    legend: 'none',
+		    backgroundColor: { fill:'transparent' },
+		    hAxis: {title: 'time'},
+		    vAxis: {title: '%', minValue: 0, maxValue: 100}
+		  };
+		  var chart = new google.visualization.AreaChart(document.getElementById('chance_history'));
+		  chart.draw(data, options);
+		}
+	table(id="raw_history")
 		- foreach (change; pred.changes)
 			tr
 				th #{change.date}
