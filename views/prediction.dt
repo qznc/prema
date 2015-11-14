@@ -22,12 +22,12 @@ block body
 		tr
 			th closes
 			td
-				time(datetime="#{pred.created}") #{pred.created}
+				time(datetime="#{pred.closes}") #{pred.closes}
 		- if (pred.settled != "")
 			tr
 				th settled
 				td
-					time(datetime="#{pred.created}") #{pred.created}
+					time(datetime="#{pred.settled}") #{pred.settled}
 	- if (!closed)
 		form(method="POST")
 			p
