@@ -51,7 +51,7 @@ block body
 				| or
 				button(name="settlement", value="false") Settle as False
 	- if (closed && settled)
-		p Prediction is settled.
+		p Prediction is settled as "#{pred.result}".
 	div(id="chance_history")
 	script(type="text/javascript", src="https://www.google.com/jsapi")
 	:javascript

@@ -44,6 +44,8 @@ void init_empty_db(Database db) {
 		);");
 }
 
+immutable SQL_SELECT_PREDICTION_PREFIX = "SELECT id,statement,created,creator,closes,settled,result FROM predictions ";
+
 struct database {
 	Database db;
 
@@ -79,28 +81,30 @@ struct database {
 	}
 
 	private auto parsePredictionQuery(ResultRange query) {
-		prediction[] result;
+		prediction[] ret;
 		foreach (row; query) {
 			auto i = row.peek!int(0);
 			auto s = row.peek!string(1);
 			auto created = row.peek!string(2);
-			auto closes  = row.peek!string(3);
-			auto settled = row.peek!string(4);
-			result ~= prediction(i,s,created,closes,settled,db);
+			auto creator = row.peek!string(3);
+			auto closes  = row.peek!string(4);
+			auto settled = row.peek!string(5);
+			auto result = row.peek!string(6);
+			ret ~= prediction(i,s,created,closes,settled,result,db);
 		}
-		return result;
+		return ret;
 	}
 
 	prediction[] activePredictions() {
 		SysTime now = Clock.currTime;
-		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE closes > ?;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes > ?;");
 		query.bind(1, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
 
 	prediction[] predictionsToSettle() {
 		SysTime now = Clock.currTime;
-		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE closes < ? AND settled IS NULL;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes < ? AND settled IS NULL;");
 		query.bind(1, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
@@ -149,7 +153,7 @@ struct database {
 
 	auto usersActivePredictions(int userid) {
 		SysTime now = Clock.currTime;
-		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE creator == ? AND closes > ? AND settled IS NULL;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes > ? AND settled IS NULL;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
@@ -157,7 +161,7 @@ struct database {
 
 	auto usersClosedPredictions(int userid) {
 		SysTime now = Clock.currTime;
-		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE creator == ? AND (closes < ? OR settled IS NOT NULL);");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND (closes < ? OR settled IS NOT NULL);");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
@@ -173,11 +177,11 @@ struct prediction {
 	int id;
 	string statement;
 	int creator, yes_shares, no_shares;
-	string created, closes, settled;
+	string created, closes, settled, result;
 	chance_change[] changes;
 	@disable this();
 	this(int id, Database db) {
-		auto query = db.prepare("SELECT id,statement,created,creator,closes,settled FROM predictions WHERE id = ?;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE id = ?;");
 		query.bind(1, id);
 		foreach (row; query.execute()) {
 			this.id = row.peek!int(0);
@@ -187,16 +191,18 @@ struct prediction {
 			this.creator = row.peek!int(3);
 			this.closes  = row.peek!string(4);
 			this.settled = row.peek!string(5);
+			this.result = row.peek!string(6);
 			break;
 		}
 		loadShares(db);
 	}
-	this(int id, string statement, string created, string closes, string settled, Database db) {
+	this(int id, string statement, string created, string closes, string settled, string result, Database db) {
 		this.id = id;
 		this.statement = statement;
 		this.created = created;
 		this.closes = closes;
 		this.settled = settled;
+		this.result = result;
 		loadShares(db);
 	}
 
@@ -224,9 +230,10 @@ struct prediction {
 
 	void settle(database db, bool result) {
 		auto now = Clock.currTime.toISOExtString;
-		auto query = db.db.prepare("UPDATE predictions SET settled=? WHERE id=?;");
+		auto query = db.db.prepare("UPDATE predictions SET settled=?, result=? WHERE id=?;");
 		query.bind(1, now);
-		query.bind(2, this.id);
+		query.bind(2, result ? "yes" : "no");
+		query.bind(3, this.id);
 		query.execute();
 		this.settled = now;
 		// TODO payout
