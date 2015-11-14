@@ -175,9 +175,9 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 				HTTPStatus.badRequest, "Verification failed.");
 			enforceHTTP(answer["audience"] == audience,
 				HTTPStatus.badRequest, "Verification failed.");
-			string expires = answer["expires"].toString();
-			string issuer = answer["issuer"].toString();
-			string email = answer["email"].toString();
+			string expires = answer["expires"].to!string;
+			string issuer = answer["issuer"].to!string;
+			string email = answer["email"].to!string;
 			auto session = res.startSession();
 			session.set("userEmail", email);
 			session.set("persona_expires", expires);
