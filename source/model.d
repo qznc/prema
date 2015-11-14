@@ -153,7 +153,7 @@ struct database {
 
 	auto usersActivePredictions(int userid) {
 		SysTime now = Clock.currTime;
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes > ? AND settled IS NULL;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes > ?;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
@@ -161,7 +161,7 @@ struct database {
 
 	auto usersClosedPredictions(int userid) {
 		SysTime now = Clock.currTime;
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND (closes < ? OR settled IS NOT NULL);");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes < ?;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
