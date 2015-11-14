@@ -52,4 +52,9 @@ block body
 				button(name="settlement", value="false") Settle as False
 	- if (closed && settled)
 		p Prediction is settled.
+	table
+		- foreach (change; pred.changes)
+			tr
+				th #{change.date}
+				td #{change.chance*100}%
 

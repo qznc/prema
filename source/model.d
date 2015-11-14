@@ -39,6 +39,7 @@ void init_empty_db(Database db) {
 		prediction INTEGER, /* which prediction? */
 		share_count INTEGER, /* amount of shares traded */
 		yes_order INTEGER, /* what was bought 1=yes, 2=no */
+		date TEXT NOT NULL, /* ISO8601 date */
 		price REAL /* might be negative! */
 		);");
 }
@@ -131,12 +132,14 @@ struct database {
 		}
 		u.wealth -= price;
 		/* update database */
-		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
+		auto now = Clock.currTime.toISOExtString;
+		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?, ?);");
 		q.bind(1, u.id);
 		q.bind(2, p.id);
 		q.bind(3, amount);
 		q.bind(4, t);
-		q.bind(5, price);
+		q.bind(5, now);
+		q.bind(6, price);
 		q.execute();
 		q = db.prepare("UPDATE users SET wealth = ? WHERE id = ?;");
 		q.bind(1, u.wealth);
@@ -145,11 +148,17 @@ struct database {
 	}
 }
 
+struct chance_change {
+	string date;
+	real chance;
+}
+
 struct prediction {
 	int id;
 	string statement;
 	int creator, yes_shares, no_shares;
 	string created, closes, settled;
+	chance_change[] changes;
 	@disable this();
 	this(int id, Database db) {
 		auto query = db.prepare("SELECT id,statement,created,creator,closes,settled FROM predictions WHERE id = ?;");
@@ -180,17 +189,20 @@ struct prediction {
 	}
 
 	private void loadShares(Database db) {
-		auto query = db.prepare("SELECT share_count, yes_order FROM orders WHERE prediction = ?");
+		changes ~= chance_change(created,0.5);
+		auto query = db.prepare("SELECT share_count, yes_order, date FROM orders WHERE prediction = ? ORDER BY date;");
 		query.bind(1, id);
 		foreach (row; query.execute()) {
 			auto amount = row.peek!int(0);
 			auto y = row.peek!int(1);
+			auto date = row.peek!string(2);
 			if (y == 1) {
 				yes_shares += amount;
 			} else {
 				assert (y == 2);
 				no_shares += amount;
 			}
+			changes ~= chance_change(date,this.chance);
 		}
 	}
 

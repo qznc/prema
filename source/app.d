@@ -62,7 +62,6 @@ void renderPrediction(
 	auto closed = now > pred.closes;
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
-	// TODO show history of chance
 	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, req);
 }
 
