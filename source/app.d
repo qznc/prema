@@ -62,6 +62,7 @@ void renderPrediction(
 	auto closed = now > pred.closes;
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
+	// TODO show history of chance
 	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, req);
 }
 
@@ -151,6 +152,8 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 	auto user = db.getUser(id);
 	string pageTitle = user.name;
 	res.render!("user.dt", pageTitle, user, req);
+
+	// TODO show created predictions
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)

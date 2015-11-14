@@ -201,6 +201,7 @@ struct prediction {
 		query.bind(2, this.id);
 		query.execute();
 		this.settled = now;
+		// TODO payout
 	}
 
 	/* chance that statement happens according to current market */
