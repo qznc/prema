@@ -75,3 +75,4 @@ html
 		- if (!req.session)
 			| <script type="text/javascript">navigator.id.watch( { loggedInUser: "", onlogin: verifyAssertion, onlogout: signoutUser } );</script>
 		- else
+		script(src='/static/prema.js')

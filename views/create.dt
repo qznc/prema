@@ -6,11 +6,11 @@ block body
 	form(method="POST")
 		p
 			| I predict that
-			input(type="text", value="", name="prediction")
+			input(type="text", value="", name="prediction", size="60")
 			| and we can trade it until
-			input(type="text", value="#{suggested_end}", name="end")
+			input(type="text", value="#{suggested_end}", name="end", size="28")
 			| .
 		p
 			button Create
-		p Settlement might cost up to #{max_loss}€.
+		p Settlement might cost up to #{round(max_loss)}€.
 

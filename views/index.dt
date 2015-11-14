@@ -9,7 +9,7 @@ block body
 					// TODO nice date and percentage formatting
 					a(href="/p/#{pred.id}") #{pred.statement}
 					span(class="chance") #{round(pred.chance * 100)}%
-					time(class="end") #{pred.closes}
+					time(datetime="#{pred.closes}", class="end") #{pred.closes}
 	h2 Active Predictions
 	- predList(active);
 	h2 Predictions to Settle

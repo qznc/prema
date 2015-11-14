@@ -13,18 +13,21 @@ block body
 			td #{round(pred.chance * 100)}%
 		tr
 			th created
-			td #{pred.created}
+			td
+				time(datetime="#{pred.created}") #{pred.created}
 		tr
 			th creator
 			td
 				a(href="/u/#{creator.id}") #{creator.name}
 		tr
 			th closes
-			td #{pred.closes}
+			td
+				time(datetime="#{pred.created}") #{pred.created}
 		- if (pred.settled != "")
 			tr
 				th settled
-				td #{pred.settled}
+				td
+					time(datetime="#{pred.created}") #{pred.created}
 	- if (!closed)
 		form(method="POST")
 			p
@@ -62,8 +65,8 @@ block body
 		  var tbl = document.getElementById("raw_history");
 		  var trs = tbl.getElementsByTagName("tr");
 		  for(var i=0; i < trs.length; i++) {
-		    var th = trs[i].getElementsByTagName("th")[0];
-		    var date = new Date(th.innerHTML);
+		    var th = trs[i].getElementsByTagName("time")[0];
+		    var date = new Date(th.getAttribute("datetime"));
 		    var td = trs[i].getElementsByTagName("td")[0];
 		    var chance = td.innerHTML;
 		    chance = parseFloat(chance.substring(0,chance.length-1));
@@ -86,6 +89,7 @@ block body
 	table(id="raw_history")
 		- foreach (change; pred.changes)
 			tr
-				th #{change.date}
+				th
+					time(datetime="#{change.date}") #{change.date}
 				td #{round(change.chance*100)}%
 
