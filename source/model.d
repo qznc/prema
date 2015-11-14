@@ -104,13 +104,14 @@ struct database {
 		return parsePredictionQuery(query.execute());
 	}
 
-	void createPrediction(string stmt, string closes) {
+	void createPrediction(string stmt, string closes, user creator) {
 		SysTime now = Clock.currTime;
-		auto q = db.prepare("INSERT INTO predictions VALUES (NULL, ?, ?, ?, NULL);");
+		enforce (SysTime.fromISOExtString(closes) > now, "closes date must be in the future");
+		auto q = db.prepare("INSERT INTO predictions (id,statement,created,creator,closes,settled,result) VALUES (NULL, ?, ?, ?, ?, NULL, NULL);");
 		q.bind(1,stmt);
 		q.bind(2,now.toISOExtString());
-		enforce (SysTime.fromISOExtString(closes) > now, "closes date must be in the future");
-		q.bind(3,closes);
+		q.bind(3,creator.id);
+		q.bind(4,closes);
 		q.execute();
 	}
 
@@ -147,19 +148,20 @@ struct database {
 struct prediction {
 	int id;
 	string statement;
-	int yes_shares, no_shares;
+	int creator, yes_shares, no_shares;
 	string created, closes, settled;
 	@disable this();
 	this(int id, Database db) {
-		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE id = ?;");
+		auto query = db.prepare("SELECT id,statement,created,creator,closes,settled FROM predictions WHERE id = ?;");
 		query.bind(1, id);
 		foreach (row; query.execute()) {
 			this.id = row.peek!int(0);
 			assert (this.id == id);
 			this.statement = row.peek!string(1);
 			this.created = row.peek!string(2);
-			this.closes  = row.peek!string(3);
-			this.settled = row.peek!string(4);
+			this.creator = row.peek!int(3);
+			this.closes  = row.peek!string(4);
+			this.settled = row.peek!string(5);
 			break;
 		}
 		loadShares(db);
@@ -171,6 +173,10 @@ struct prediction {
 		this.closes = closes;
 		this.settled = settled;
 		loadShares(db);
+	}
+
+	user getCreator(database db) {
+		return db.getUser(this.creator);
 	}
 
 	private void loadShares(Database db) {
@@ -302,7 +308,8 @@ database getDatabase() {
 	auto db = database(path);
 	if (init) {
 		init_empty_db(db.db);
-		db.createPrediction("This app will actually be used.", "2016-02-02T05:45:55+00:00");
+		auto user = db.getUser(1);
+		db.createPrediction("This app will actually be used.", "2016-02-02T05:45:55+00:00", user);
 	}
 	return db;
 }
@@ -364,8 +371,9 @@ unittest {
 
 unittest {
 	auto db = getMemoryDatabase();
-	db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00");
-	db.createPrediction("Michelle Obama becomes president.", "2015-12-12T05:45:55+00:00");
+	auto user = db.getUser(1);
+	db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00", user);
+	db.createPrediction("Michelle Obama becomes president.", "2015-12-12T05:45:55+00:00", user);
 	SysTime now = Clock.currTime;
 	foreach (p; db.predictions) {
 		assert (p.statement);
@@ -380,8 +388,9 @@ unittest {
 
 unittest {
 	auto db = getMemoryDatabase();
+	auto user = db.getUser(1);
 	auto stmt = "This app will be actually used.";
-	db.createPrediction(stmt, "2015-02-02T05:45:55+00:00");
+	db.createPrediction(stmt, "2015-02-02T05:45:55+00:00", user);
 	auto admin = db.getUser(1);
 	assert (admin.email == "root@localhost");
 	auto pred = db.getPrediction(1);

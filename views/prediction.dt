@@ -15,6 +15,10 @@ block body
 			th created
 			td #{pred.created}
 		tr
+			th creator
+			td
+				a(href="/u/#{creator.id}") #{creator.name}
+		tr
 			th closes
 			td #{pred.closes}
 		- if (pred.settled != "")

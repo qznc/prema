@@ -52,13 +52,17 @@ void index(HTTPServerRequest req, HTTPServerResponse res)
 	res.render!("index.dt", pageTitle, active, toSettle, req);
 }
 
-void renderPrediction(model.prediction pred, HTTPServerRequest req, HTTPServerResponse res)
+void renderPrediction(
+	model.prediction pred,
+	database db,
+	HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto now = Clock.currTime.toISOExtString;
+	auto creator = pred.getCreator(db);
 	auto closed = now > pred.closes;
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
-	res.render!("prediction.dt", pageTitle, pred, closed, settled, req);
+	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
@@ -66,7 +70,7 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
-	renderPrediction(pred, req, res);
+	renderPrediction(pred, db, req, res);
 }
 
 void get_create(HTTPServerRequest req, HTTPServerResponse res)
@@ -98,7 +102,9 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.1188658.";
 	}
 	if (errors.empty) {
-		db.createPrediction(pred,end);
+		auto email = req.session.get!string("userEmail");
+		auto user = db.getUser(email);
+		db.createPrediction(pred,end,user);
 		res.redirect("/");
 	} else {
 		string pageTitle = "Create New Prediction";
@@ -120,7 +126,7 @@ void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
 	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
 	db.buy(user, pred, amount, type);
 
-	renderPrediction(pred, req, res);
+	renderPrediction(pred, db, req, res);
 }
 
 void post_settle(HTTPServerRequest req, HTTPServerResponse res)
@@ -135,7 +141,7 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 	auto result = req.form["settlement"] == "true";
 	pred.settle(db, result);
 
-	renderPrediction(pred, req, res);
+	renderPrediction(pred, db, req, res);
 }
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
