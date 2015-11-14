@@ -10,7 +10,6 @@ html
 		//- TODO icon? content type? async javascript?
 	body
 		header
-			h1 #{pageTitle}
 			#personaButtons
 				- if (!req.session)
 					button#signin(onclick='javascript:navigator.id.request()') Sign In
@@ -19,17 +18,18 @@ html
 			p
 				a(href="/") Overview
 				a(href="/create") Create
-				a(href="/about") About
 				- if (req.session)
 					- auto userid = req.session.get!int("userId");
 					- auto username = req.session.get!string("userName");
 					a(href="/u/#{userid}") #{username}
+			h1 #{pageTitle}
 
 		article
 			block body
 
 		footer
-			p Footer text
+			p
+				a(href="/about") About
 		script(src='https://login.persona.org/include.js')
 		:javascript
 			function simpleXhrSentinel(xhr) {
