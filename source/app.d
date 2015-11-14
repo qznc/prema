@@ -150,9 +150,9 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 	auto db = getDatabase();
 	auto user = db.getUser(id);
 	string pageTitle = user.name;
-	res.render!("user.dt", pageTitle, user, req);
-
-	// TODO show created predictions
+	auto predsActive = db.usersActivePredictions(id);
+	auto predsClosed = db.usersClosedPredictions(id);
+	res.render!("user.dt", pageTitle, user, predsActive, predsClosed, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)

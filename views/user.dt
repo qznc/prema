@@ -5,4 +5,14 @@ block body
 		tr
 			th wealth
 			td #{user.wealth}
+	h2 Active Predictions
+		ul
+			- foreach (pred; predsActive)
+				li
+					a(href="/p/#{pred.id}") #{pred.statement}
+	h2 Closed Predictions
+		ul
+			- foreach (pred; predsClosed)
+				li
+					a(href="/p/#{pred.id}") #{pred.statement}
 

@@ -146,6 +146,22 @@ struct database {
 		q.bind(2, u.id);
 		q.execute();
 	}
+
+	auto usersActivePredictions(int userid) {
+		SysTime now = Clock.currTime;
+		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE creator == ? AND closes > ? AND settled IS NULL;");
+		query.bind(1, userid);
+		query.bind(2, now.toISOExtString());
+		return parsePredictionQuery(query.execute());
+	}
+
+	auto usersClosedPredictions(int userid) {
+		SysTime now = Clock.currTime;
+		auto query = db.prepare("SELECT id,statement,created,closes,settled FROM predictions WHERE creator == ? AND (closes < ? OR settled IS NOT NULL);");
+		query.bind(1, userid);
+		query.bind(2, now.toISOExtString());
+		return parsePredictionQuery(query.execute());
+	}
 }
 
 struct chance_change {
