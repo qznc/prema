@@ -79,7 +79,7 @@ void get_create(HTTPServerRequest req, HTTPServerResponse res)
 	auto suggested_end = (time + dur!"days"(7)).toISOExtString;
 	string pageTitle = "Create New Prediction";
 	string[] errors;
-	res.render!("create.dt", pageTitle, suggested_end, errors, req);
+	res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
 }
 
 void post_create(HTTPServerRequest req, HTTPServerResponse res)
@@ -110,7 +110,7 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		string pageTitle = "Create New Prediction";
 		auto time = Clock.currTime;
 		auto suggested_end = (time + dur!"days"(7)).toISOExtString;
-		res.render!("create.dt", pageTitle, suggested_end, errors, req);
+		res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
 	}
 }
 

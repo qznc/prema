@@ -357,6 +357,7 @@ database getMemoryDatabase() {
 }
 
 immutable real b = 100;
+immutable real max_loss = b * log(2);
 
 real LMSR_C(real b, real yes, real no) pure nothrow @safe {
 	return b * log(exp(yes/b) + exp(no/b));
