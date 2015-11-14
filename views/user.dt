@@ -4,7 +4,7 @@ block body
 	table
 		tr
 			th wealth
-			td #{user.wealth}
+			td #{user.wealth}€
 	h2 Active Predictions
 		ul
 			- foreach (pred; predsActive)

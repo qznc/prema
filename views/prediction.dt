@@ -4,13 +4,13 @@ block body
 	table
 		tr
 			th yes
-			td #{pred.yes_shares}
+			td #{pred.yes_shares} shares
 		tr
 			th no
-			td #{pred.no_shares}
+			td #{pred.no_shares} shares
 		tr
 			th chance
-			td #{pred.chance * 100}%
+			td #{round(pred.chance * 100)}%
 		tr
 			th created
 			td #{pred.created}
@@ -39,7 +39,7 @@ block body
 				| for
 				span(class="price") 0.00€
 				| which changes the chance to
-				span(class="chance") #{pred.chance*100}%
+				span(class="chance") #{round(pred.chance*100)}%
 				|.
 			p
 				button Do it
@@ -87,5 +87,5 @@ block body
 		- foreach (change; pred.changes)
 			tr
 				th #{change.date}
-				td #{change.chance*100}%
+				td #{round(change.chance*100)}%
 
