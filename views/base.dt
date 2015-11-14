@@ -8,7 +8,6 @@ html
 		link(rel='shortcut icon', href='/static/favicon.ico')
 		link(rel='stylesheet', type='text/css', href='/static/normalize.css')
 		link(rel='stylesheet', type='text/css', href='/static/prema.css')
-		//- TODO icon? content type? async javascript?
 	body
 		header
 			#personaButtons
