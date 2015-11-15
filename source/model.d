@@ -96,21 +96,21 @@ struct database {
 	}
 
 	prediction[] activePredictions() {
-		SysTime now = Clock.currTime;
+		SysTime now = Clock.currTime.toUTC;
 		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes > ?;");
 		query.bind(1, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
 
 	prediction[] predictionsToSettle() {
-		SysTime now = Clock.currTime;
+		SysTime now = Clock.currTime.toUTC;
 		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes < ? AND settled IS NULL;");
 		query.bind(1, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
 
 	void createPrediction(string stmt, string closes, user creator) {
-		SysTime now = Clock.currTime;
+		SysTime now = Clock.currTime.toUTC;
 		enforce (SysTime.fromISOExtString(closes) > now, "closes date must be in the future");
 		auto q = db.prepare("INSERT INTO predictions (id,statement,created,creator,closes,settled,result) VALUES (NULL, ?, ?, ?, ?, NULL, NULL);");
 		q.bind(1,stmt);
@@ -136,7 +136,7 @@ struct database {
 		}
 		u.wealth -= price;
 		/* update database */
-		auto now = Clock.currTime.toISOExtString;
+		auto now = Clock.currTime.toUTC.toISOExtString;
 		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?, ?);");
 		q.bind(1, u.id);
 		q.bind(2, p.id);
@@ -156,7 +156,7 @@ struct database {
 	}
 
 	auto usersActivePredictions(int userid) {
-		SysTime now = Clock.currTime;
+		SysTime now = Clock.currTime.toUTC;
 		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes > ?;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
@@ -164,7 +164,7 @@ struct database {
 	}
 
 	auto usersClosedPredictions(int userid) {
-		SysTime now = Clock.currTime;
+		SysTime now = Clock.currTime.toUTC;
 		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes < ?;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
@@ -237,7 +237,7 @@ struct prediction {
 		//writeln("settle "~text(this.id)~" as "~text(result));
 		/* mark prediction as settled now */
 		{
-			auto now = Clock.currTime.toISOExtString;
+			auto now = Clock.currTime.toUTC.toISOExtString;
 			auto query = db.db.prepare("UPDATE predictions SET settled=?, result=? WHERE id=?;");
 			query.bind(1, now);
 			query.bind(2, result ? "yes" : "no");
@@ -452,7 +452,7 @@ unittest {
 	auto user = db.getUser(1);
 	db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00", user);
 	db.createPrediction("Michelle Obama becomes president.", "2015-12-12T05:45:55+00:00", user);
-	SysTime now = Clock.currTime;
+	SysTime now = Clock.currTime.toUTC;
 	foreach (p; db.predictions) {
 		assert (p.statement);
 		assert (p.chance >= 0.0);

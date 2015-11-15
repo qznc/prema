@@ -75,7 +75,7 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
 
 void get_create(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto time = Clock.currTime;
+	auto time = Clock.currTime.toUTC;
 	auto suggested_end = (time + dur!"days"(7)).toISOExtString;
 	string pageTitle = "Create New Prediction";
 	string[] errors;
@@ -94,8 +94,8 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		errors ~= "End date empty.";
 	try {
 		auto end_dt = SysTime.fromISOExtString(end);
-		auto time = Clock.currTime;
-		if (time > end_dt) {
+		auto now = Clock.currTime;
+		if (now > end_dt) {
 			errors ~= "End date must be in the future.";
 		}
 	} catch (DateTimeException e) {
@@ -108,8 +108,8 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		res.redirect("/");
 	} else {
 		string pageTitle = "Create New Prediction";
-		auto time = Clock.currTime;
-		auto suggested_end = (time + dur!"days"(7)).toISOExtString;
+		auto now = Clock.currTime.toUTC;
+		auto suggested_end = (now + dur!"days"(7)).toISOExtString;
 		res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
 	}
 }
