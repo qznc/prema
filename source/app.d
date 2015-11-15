@@ -57,9 +57,9 @@ void renderPrediction(
 	database db,
 	HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto now = Clock.currTime.toISOExtString;
+	auto now = Clock.currTime;
 	auto creator = pred.getCreator(db);
-	auto closed = now > pred.closes;
+	auto closed = now > SysTime.fromISOExtString(pred.closes);
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
 	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, req);
