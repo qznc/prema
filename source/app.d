@@ -31,7 +31,7 @@ shared static this()
 		.get("/create", &get_create)
 		.post("/create", &post_create)
 		.post("/settle", &post_settle)
-		.post("/p/:predID", &change_prediction)
+		.post("/p/:predID", &buy_shares)
 	;
 
 	auto settings = new HTTPServerSettings;
@@ -114,7 +114,7 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 	}
 }
 
-void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
+void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 {
 	assert (req.method == HTTPMethod.POST);
 	auto id = to!int(req.params["predID"]);
@@ -125,8 +125,7 @@ void change_prediction(HTTPServerRequest req, HTTPServerResponse res)
 	auto amount = to!int(req.form["amount"]);
 	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
 	db.buy(user, pred, amount, type);
-
-	renderPrediction(pred, db, req, res);
+	res.redirect(req.path);
 }
 
 void post_settle(HTTPServerRequest req, HTTPServerResponse res)
@@ -140,7 +139,6 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 	//assert (user.id == pred.creator);
 	auto result = req.form["settlement"] == "true";
 	pred.settle(db, result);
-
 	renderPrediction(pred, db, req, res);
 }
 
