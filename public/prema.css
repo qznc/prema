@@ -47,4 +47,5 @@ li time { margin-left: 1em; }
 
 .error { padding: .5em 1em; }
 
-footer { padding-bottom: 20em; }
+footer { padding-bottom: 20em; text-align: center; }
+footer .version { margin-left: 3em; }

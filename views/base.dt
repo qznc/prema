@@ -1,4 +1,5 @@
 - import std.math : round;
+- import git_version;
 doctype html
 html
 	head
@@ -30,6 +31,7 @@ html
 		footer
 			p
 				a(href="/about") About
+				span(class="version") #{VER}
 		script(src='https://login.persona.org/include.js')
 		:javascript
 			function simpleXhrSentinel(xhr) {
