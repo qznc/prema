@@ -12,5 +12,11 @@ block body
 			| .
 		p
 			button Create
-		p Settlement might cost up to #{max_loss}€.
+		p Settlement might cost up to #{max_loss}€. Some advice for predictions:
+		ul
+			li Predictions start at 50%. Try to design them accordingly.
+			li After close, you have to decide between true and false, so phrase your predictions very concretely.
+			li Avoid predictions where settlement is subjective.
+			li Phrase predictions positively, which means without 'not'. Betting against is just as profitable.
+
 
