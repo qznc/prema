@@ -18,8 +18,8 @@ html
 					button#signout(onclick='javascript:navigator.id.logout()') Sign Out
 			p
 				a(href="/") Overview
-				a(href="/create") Create
 				- if (req.session)
+					a(href="/create") Create
 					- auto userid = req.session.get!int("userId");
 					- auto username = req.session.get!string("userName");
 					a(href="/u/#{userid}") #{username}
