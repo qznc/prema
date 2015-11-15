@@ -229,6 +229,49 @@ and become rich (with play money).
 The price of the shares corresponds to a probability that the prediction is true.
 If many people participate,
 those probabilities tend to be very accurate.
+
+## How to Play?
+
+There are various predictions listed in the overview.
+Pick one.
+Then buy 'yes' or 'no' shares depending on
+whether you think the prediction will turn out true or false.
+One share costs at most 1.00€.
+How much exactly depends on the market.
+When the prediction is closed and settled,
+you get 1.00€ for each correct share.
+
+For example,
+we have a prediction, which is currently at 70%.
+You could buy a yes-share for 0.70€.
+If it turns out true, you get 1.00€ back,
+which is a profit of 0.30€.
+In contrast, a no-share costs 0.30€
+and promises a profit of 0.70€.
+In gambling terms,
+these are odds slightly above 1:2.3.
+
+You can create your own predictions
+and everybody can then trade on them.
+Note that the creator of a prediction has to balance the market,
+when it is settled.
+So you might lose some money by creating predictions.
+You might also win some,
+if most traders are wrong.
+This also means,
+the creator does not gain or lose any money,
+if nobody else trades on a prediction.
+
+## How to Interpret the Price?
+
+The price of one share corresponds to the chance
+the market considers for the prediction to turn out true.
+
+Apart from being gambling fun,
+prediction markets encourage insider trading.
+If you know more about certain predictions,
+you can profit from this knowledge.
+In return, the public gets a more accurate forecast.
 	", MarkdownFlags.none);
 	res.render!("plain.dt", pageTitle, text, req);
 }

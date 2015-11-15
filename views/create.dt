@@ -12,5 +12,5 @@ block body
 			| .
 		p
 			button Create
-		p Settlement might cost up to #{round(max_loss)}€.
+		p Settlement might cost up to #{max_loss}€.
 
