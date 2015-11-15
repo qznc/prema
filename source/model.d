@@ -3,7 +3,7 @@
 import d2sqlite3;
 import std.algorithm: findSplitBefore;
 import std.stdio: writeln;
-import std.math: log, exp, isNaN;
+import std.math: log, exp, isNaN, abs;
 import std.conv: text;
 import std.format: formatValue, singleSpec, formattedWrite;
 import std.datetime: Clock, SysTime;
@@ -234,7 +234,7 @@ struct prediction {
 	}
 
 	void settle(database db, bool result) {
-		writeln("settle "~text(this.id)~" as "~text(result));
+		//writeln("settle "~text(this.id)~" as "~text(result));
 		/* mark prediction as settled now */
 		{
 			auto now = Clock.currTime.toISOExtString;
@@ -245,6 +245,17 @@ struct prediction {
 			query.execute();
 			this.settled = now;
 		}
+		/* The market maker/creator has to balance the shares,
+		   which means he buys shares until yes==no. */
+		{
+			auto amount = abs(yes_shares - no_shares);
+			if (amount > 0) {
+				auto t = yes_shares < no_shares ? share_type.yes : share_type.no;
+				auto c = db.getUser(creator);
+				db.buy(c, this, amount, t);
+				//writeln("creator buys "~text(amount)~" shares of "~text(t));
+			}
+		}
 		/* payout */
 		{
 			auto query = db.db.prepare("SELECT user, share_count FROM orders WHERE prediction=? AND yes_order=?;");
@@ -254,7 +265,7 @@ struct prediction {
 			foreach (row; query.execute()) {
 				auto userid = row.peek!int(0);
 				auto amount = row.peek!int(1);
-				writeln("order "~text(amount)~" shares for "~text(userid));
+				//writeln("order "~text(amount)~" shares for "~text(userid));
 				auto count = (userid in shares);
 				if (count is null) {
 					shares[userid] = amount;
@@ -263,11 +274,10 @@ struct prediction {
 				}
 			}
 			foreach (userid,amount; shares) {
-				writeln("payout: "~text(amount)~" to "~text(userid));
-				giveWealth(userid, amount);
+				//writeln("payout: "~text(amount)~" to "~text(userid));
+				db.giveWealth(userid, amount);
 			}
 		}
-		// TODO tax the creator
 	}
 
 	/* chance that statement happens according to current market */
@@ -341,7 +351,7 @@ struct user {
 			q.bind(2, email);
 			q.bind(3, wealth);
 			q.execute();
-			writeln("create user in db");
+			//writeln("create user in db");
 		}
 	}
 
