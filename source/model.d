@@ -145,9 +145,13 @@ struct database {
 		q.bind(5, now);
 		q.bind(6, price);
 		q.execute();
-		q = db.prepare("UPDATE users SET wealth = ? WHERE id = ?;");
-		q.bind(1, u.wealth);
-		q.bind(2, u.id);
+		giveWealth(u.id, -price);
+	}
+
+	void giveWealth(int userid, real price) {
+		auto q = db.prepare("UPDATE users SET wealth = wealth + ? WHERE id = ?;");
+		q.bind(1, price);
+		q.bind(2, userid);
 		q.execute();
 	}
 
@@ -171,6 +175,7 @@ struct database {
 struct chance_change {
 	string date;
 	real chance;
+	int shares;
 }
 
 struct prediction {
@@ -211,7 +216,7 @@ struct prediction {
 	}
 
 	private void loadShares(Database db) {
-		changes ~= chance_change(created,0.5);
+		changes ~= chance_change(created,0.5,0);
 		auto query = db.prepare("SELECT share_count, yes_order, date FROM orders WHERE prediction = ? ORDER BY date;");
 		query.bind(1, id);
 		foreach (row; query.execute()) {
@@ -224,19 +229,45 @@ struct prediction {
 				assert (y == 2);
 				no_shares += amount;
 			}
-			changes ~= chance_change(date,this.chance);
+			changes ~= chance_change(date,this.chance,amount);
 		}
 	}
 
 	void settle(database db, bool result) {
-		auto now = Clock.currTime.toISOExtString;
-		auto query = db.db.prepare("UPDATE predictions SET settled=?, result=? WHERE id=?;");
-		query.bind(1, now);
-		query.bind(2, result ? "yes" : "no");
-		query.bind(3, this.id);
-		query.execute();
-		this.settled = now;
-		// TODO payout
+		writeln("settle "~text(this.id)~" as "~text(result));
+		/* mark prediction as settled now */
+		{
+			auto now = Clock.currTime.toISOExtString;
+			auto query = db.db.prepare("UPDATE predictions SET settled=?, result=? WHERE id=?;");
+			query.bind(1, now);
+			query.bind(2, result ? "yes" : "no");
+			query.bind(3, this.id);
+			query.execute();
+			this.settled = now;
+		}
+		/* payout */
+		{
+			auto query = db.db.prepare("SELECT user, share_count FROM orders WHERE prediction=? AND yes_order=?;");
+			query.bind(1, this.id);
+			query.bind(2, result ? 1 : 2);
+			int[int] shares;
+			foreach (row; query.execute()) {
+				auto userid = row.peek!int(0);
+				auto amount = row.peek!int(1);
+				writeln("order "~text(amount)~" shares for "~text(userid));
+				auto count = (userid in shares);
+				if (count is null) {
+					shares[userid] = amount;
+				} else {
+					*count  += amount;
+				}
+			}
+			foreach (userid,amount; shares) {
+				writeln("payout: "~text(amount)~" to "~text(userid));
+				giveWealth(userid, amount);
+			}
+		}
+		// TODO tax the creator
 	}
 
 	/* chance that statement happens according to current market */

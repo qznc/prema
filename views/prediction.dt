@@ -31,9 +31,7 @@ block body
 	- if (!closed)
 		form(method="POST")
 			p
-				select(name="buy_or_sell")
-					option(value="buy") Buy
-					option(value="sell") Sell
+				| Buy
 				input(type="text", value="1", name="amount", size="5", id="share_amount")
 				| shares of type
 				select(name="type", id="share_type")
@@ -93,4 +91,5 @@ block body
 				th
 					time(datetime="#{change.date}") #{change.date}
 				td #{round(change.chance*100)}%
+				td #{change.shares} shares
 
