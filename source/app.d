@@ -36,7 +36,7 @@ shared static this()
 
 	auto settings = new HTTPServerSettings;
 	settings.port = 8080;
-	settings.bindAddresses = [host];
+	settings.bindAddresses = ["141.3.44.16", host];
 	settings.sessionStore = new MemorySessionStore;
 	listenHTTP(settings, router);
 
