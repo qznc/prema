@@ -60,10 +60,14 @@ void renderPrediction(
 {
 	auto now = Clock.currTime;
 	auto creator = pred.getCreator(db);
+	string email = "@@";
+	if (req.session)
+		email = req.session.get!string("userEmail");
+	bool can_settle = email == creator.email;
 	auto closed = now > SysTime.fromISOExtString(pred.closes);
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
-	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, errors, req);
+	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, can_settle, errors, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
@@ -146,12 +150,14 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 {
 	assert (req.method == HTTPMethod.POST);
+	assert (req.session);
 	auto id = to!int(req.form["predid"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
 	auto email = req.session.get!string("userEmail");
 	auto user = db.getUser(email);
-	//assert (user.id == pred.creator);
+	enforceHTTP(user.id == pred.creator,
+		HTTPStatus.badRequest, "only creator can settle");
 	auto result = req.form["settlement"] == "true";
 	pred.settle(db, result);
 	string[] errors;

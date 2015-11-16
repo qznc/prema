@@ -50,12 +50,18 @@ block body
 	- if (closed && !settled)
 		- foreach (err; errors)
 			p(class="error") #{err}
-		p
-			form(method="POST", action="/settle")
-				input(type="hidden", name="predid", value="#{pred.id}")
-				button(name="settlement", value="true") Settle as True
-				| or
-				button(name="settlement", value="false") Settle as False
+		- if (can_settle)
+			p
+				form(method="POST", action="/settle")
+					input(type="hidden", name="predid", value="#{pred.id}")
+					button(name="settlement", value="true") Settle as True
+					| or
+					button(name="settlement", value="false") Settle as False
+		- else
+			p
+				| Only the creator
+				a(href="/u/#{creator.id}") #{creator.name}
+				| can settle this.
 	- if (closed && settled)
 		p Prediction is settled as "#{pred.result}".
 	div(id="chance_history")
