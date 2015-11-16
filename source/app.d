@@ -164,7 +164,7 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 		HTTPStatus.badRequest, "only creator can settle");
 	auto result = req.form["settlement"] == "true";
 	pred.settle(db, result);
-	res.redirect(req.path);
+	res.redirect("/p/"~text(pred.id));
 }
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
