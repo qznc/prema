@@ -98,14 +98,19 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		errors ~= "Prediction empty.";
 	if (end == "")
 		errors ~= "End date empty.";
-	auto end_parsed = SysTime.fromISOExtString(end~":00").toUTC;
+	SysTime end_parsed;
 	try {
-		auto now = Clock.currTime;
-		if (now > end_parsed) {
-			errors ~= "End date must be in the future.";
-		}
-	} catch (DateTimeException e) {
-		errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.1188658.";
+		/* HTML5 browsers miss the seconds */
+		end_parsed = SysTime.fromISOExtString(end~":00").toUTC;
+	} catch(DateTimeException e) try {
+		/* Firefox provides a text field */
+		end_parsed = SysTime.fromISOExtString(end).toUTC;
+	} catch(DateTimeException e) {
+		errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.118865Z.";
+	}
+	auto now = Clock.currTime.toUTC;
+	if (now > end_parsed) {
+		errors ~= "End date must be in the future.";
 	}
 	if (errors.empty) {
 		auto email = req.session.get!string("userEmail");
@@ -114,7 +119,6 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		res.redirect("/");
 	} else {
 		string pageTitle = "Create New Prediction";
-		auto now = Clock.currTime.toUTC;
 		auto suggested_end = (now + dur!"days"(7)).toISOExtString;
 		res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
 	}
