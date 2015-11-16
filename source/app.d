@@ -191,6 +191,10 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 			HTTPStatus.badRequest, "Missing assertion field.");
 	const ass = req.form["assertion"];
 	const audience = "http://"~(req.host)~":8080/";
+	if (req.session) {
+		logInfo("session already started for "~req.session.get!string("userEmail"));
+		return;
+	}
 
 	requestHTTP("https://verifier.login.persona.org/verify",
 		(scope req) {
