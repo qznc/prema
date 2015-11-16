@@ -16,7 +16,7 @@ shared static this()
 		.get("/", &index)
 		.get("/about", &about)
 		.get("/p/:predID", &prediction)
-		.get("/u/:predID", &show_user)
+		.get("/u/:userID", &show_user)
 		.post("/login", &verifyPersona)
 		.any("/logout", &logout)
 	;
@@ -32,6 +32,7 @@ shared static this()
 		.post("/create", &post_create)
 		.post("/settle", &post_settle)
 		.post("/p/:predID", &buy_shares)
+		.post("/u/:userID", &show_user)
 	;
 
 	auto settings = new HTTPServerSettings;
@@ -176,8 +177,12 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto id = to!int(req.params["predID"]);
+	auto id = to!int(req.params["userID"]);
 	auto db = getDatabase();
+	if (req.method == HTTPMethod.POST) {
+		auto new_name = req.form["new_name"];
+		db.setUserName(id, new_name);
+	}
 	auto user = db.getUser(id);
 	string pageTitle = user.name;
 	auto predsActive = db.usersActivePredictions(id);

@@ -21,8 +21,7 @@ html
 				- if (req.session)
 					a(href="/create") Create
 					- auto userid = req.session.get!int("userId");
-					- auto username = req.session.get!string("userName");
-					a(href="/u/#{userid}") #{username}
+					a(href="/u/#{userid}") Profile
 			h1 #{pageTitle}
 
 		article

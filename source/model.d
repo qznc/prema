@@ -171,6 +171,13 @@ struct database {
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
+
+	void setUserName(int userid, string name) {
+		auto query = db.prepare("UPDATE users SET name=? WHERE id=?;");
+		query.bind(1,name);
+		query.bind(2,userid);
+		query.execute();
+	}
 }
 
 struct chance_change {

@@ -15,4 +15,8 @@ block body
 			- foreach (pred; predsClosed)
 				li
 					a(href="/p/#{pred.id}") #{pred.statement}
+	h2 Change Username
+		form(method="POST")
+			input(type="text", name="new_name", value="#{user.name}", size=12)
+			button Change
 
