@@ -1,7 +1,7 @@
 extends base
 
 block body
-	table
+	table(class="pred_info")
 		tr
 			th yes
 			td(id="yes_shares") #{pred.yes_shares} shares
@@ -19,9 +19,7 @@ block body
 			th created
 			td
 				time(datetime="#{pred.created}") #{pred.created}
-		tr
-			th creator
-			td
+				| by
 				a(href="/u/#{creator.id}") #{creator.name}
 		tr
 			th closes
