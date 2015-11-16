@@ -15,6 +15,7 @@ block body
 		p Settlement might cost up to #{max_loss}€. Some advice for predictions:
 		ul
 			li Predictions start at 50%. Try to design them accordingly.
+			li If 50% does not match your belief, trade immediatelly after creation.
 			li After close, you have to decide between true and false, so phrase your predictions very concretely.
 			li Avoid predictions where settlement is subjective.
 			li Phrase predictions positively, which means without 'not'. Betting against is just as profitable.

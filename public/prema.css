@@ -6,7 +6,7 @@ h1 { font-size: 2em; line-height: 1.3em; font-weight: normal; }
 h2 { font-size: 1.2em; line-height: 1.3em; font-weight: normal; }
 h3 { font-size: 1em; line-height: 1.3em; font-weight: bold; }
 
-footer { font-size: 0.8em; }
+#raw_history { font-size: 0.8em; }
 
 table th { font-weight: normal; padding-right: 1em; }
 
@@ -24,6 +24,7 @@ a:hover { text-decoration: none; }
 
 .error { background-color: #f99; color: #600; border: 1px solid #600; }
 
+p.no_preds,
 li time { color: #155764; }
 
 /** POSITION & SIZE **/
@@ -41,11 +42,18 @@ article { margin: 1em 1em; max-width: 40em; }
 
 table th { text-align: right; }
 
+ul, ol { padding-left: 0; }
+
 li { margin: .5em 0; }
+
+#raw_history td { padding-left: 1em; }
 
 li time { margin-left: 1em; }
 
 .error { padding: .5em 1em; }
 
-footer { padding-bottom: 20em; text-align: center; }
+p.no_preds,
+footer { text-align: center; }
+
+footer { padding-bottom: 20em; }
 footer .version { margin-left: 3em; }

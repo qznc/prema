@@ -2,14 +2,17 @@ extends base
 
 block body
 	- import model: prediction;
-	- void predList(prediction[] preds)
-		ul
-			- foreach(i,pred; preds)
-				li
-					a(href="/p/#{pred.id}") #{pred.statement}
-					span(class="chance") #{round(pred.chance * 100)}%
-					time(datetime="#{pred.closes}", class="end") #{pred.closes}
+	- void predList(prediction[] preds, string no_msg)
+		- if (preds.empty)
+			p(class="no_preds") !{no_msg}
+		- else
+			ul
+				- foreach(i,pred; preds)
+					li
+						a(href="/p/#{pred.id}") #{pred.statement}
+						span(class="chance") #{round(pred.chance * 100)}%
+						time(datetime="#{pred.closes}", class="end") #{pred.closes}
 	h2 Active Predictions
-	- predList(active);
+	- predList(active, "No active predictions. <a href=\"/create\">Create some</a>!");
 	h2 Predictions to Settle
-	- predList(toSettle);
+	- predList(toSettle, "No predictions to settle.");

@@ -275,6 +275,8 @@ and promises a profit of 0.70€.
 In gambling terms,
 these are odds slightly above 1:2.3.
 
+You can sell shares by 'buying' negative amounts.
+
 You can [create your own predictions](/create)
 and everybody can then trade on them.
 Note that the creator of a prediction has to balance the market,
