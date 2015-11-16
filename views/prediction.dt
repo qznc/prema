@@ -30,6 +30,8 @@ block body
 					time(datetime="#{pred.settled}") #{pred.settled}
 	- if (!closed)
 		form(method="POST")
+			- foreach (err; errors)
+				p(class="error") #{err}
 			p
 				| Buy
 				input(type="text", value="1", name="amount", size="5", id="share_amount")
@@ -46,6 +48,8 @@ block body
 			p
 				button Do it
 	- if (closed && !settled)
+		- foreach (err; errors)
+			p(class="error") #{err}
 		p
 			form(method="POST", action="/settle")
 				input(type="hidden", name="predid", value="#{pred.id}")

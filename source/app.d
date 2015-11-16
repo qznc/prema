@@ -55,6 +55,7 @@ void index(HTTPServerRequest req, HTTPServerResponse res)
 void renderPrediction(
 	model.prediction pred,
 	database db,
+	string[] errors,
 	HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto now = Clock.currTime;
@@ -62,7 +63,7 @@ void renderPrediction(
 	auto closed = now > SysTime.fromISOExtString(pred.closes);
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
-	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, req);
+	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled, errors, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
@@ -70,7 +71,8 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
-	renderPrediction(pred, db, req, res);
+	string[] errors;
+	renderPrediction(pred, db, errors, req, res);
 }
 
 void get_create(HTTPServerRequest req, HTTPServerResponse res)
@@ -117,15 +119,23 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 {
 	assert (req.method == HTTPMethod.POST);
+	string[] errors;
+	auto amount = to!int(req.form["amount"]);
+	if (amount == 0)
+		errors ~= "Cannot buy zero shares";
 	auto id = to!int(req.params["predID"]);
 	auto db = getDatabase();
 	auto pred = db.getPrediction(id);
-	auto email = req.session.get!string("userEmail");
-	auto user = db.getUser(email);
-	auto amount = to!int(req.form["amount"]);
-	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
-	db.buy(user, pred, amount, type);
-	res.redirect(req.path);
+	logInfo(text(errors));
+	if (errors.empty) {
+		auto email = req.session.get!string("userEmail");
+		auto user = db.getUser(email);
+		auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
+		db.buy(user, pred, amount, type);
+		res.redirect(req.path);
+	} else {
+		renderPrediction(pred, db, errors, req, res);
+	}
 }
 
 void post_settle(HTTPServerRequest req, HTTPServerResponse res)
@@ -139,7 +149,8 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 	//assert (user.id == pred.creator);
 	auto result = req.form["settlement"] == "true";
 	pred.settle(db, result);
-	renderPrediction(pred, db, req, res);
+	string[] errors;
+	renderPrediction(pred, db, errors, req, res);
 }
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
