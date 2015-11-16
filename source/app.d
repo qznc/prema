@@ -94,10 +94,10 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 		errors ~= "Prediction empty.";
 	if (end == "")
 		errors ~= "End date empty.";
+	auto end_parsed = SysTime.fromISOExtString(end~":00").toUTC;
 	try {
-		auto end_dt = SysTime.fromISOExtString(end);
 		auto now = Clock.currTime;
-		if (now > end_dt) {
+		if (now > end_parsed) {
 			errors ~= "End date must be in the future.";
 		}
 	} catch (DateTimeException e) {
@@ -106,7 +106,7 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
 	if (errors.empty) {
 		auto email = req.session.get!string("userEmail");
 		auto user = db.getUser(email);
-		db.createPrediction(pred,end,user);
+		db.createPrediction(pred,end_parsed,user);
 		res.redirect("/");
 	} else {
 		string pageTitle = "Create New Prediction";

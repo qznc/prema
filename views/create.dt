@@ -8,7 +8,7 @@ block body
 			| I predict that
 			input(type="text", value="", name="prediction", size="60")
 			| and we can trade it until
-			input(type="text", value="#{suggested_end}", name="end", size="28")
+			input(type="datetime-local", value="#{suggested_end}", name="end", size="28")
 			| .
 		p
 			button Create

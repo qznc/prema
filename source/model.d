@@ -109,14 +109,14 @@ struct database {
 		return parsePredictionQuery(query.execute());
 	}
 
-	void createPrediction(string stmt, string closes, user creator) {
+	void createPrediction(string stmt, SysTime closes, user creator) {
 		SysTime now = Clock.currTime.toUTC;
-		enforce (SysTime.fromISOExtString(closes) > now, "closes date must be in the future");
+		enforce (closes > now, "closes date must be in the future");
 		auto q = db.prepare("INSERT INTO predictions (id,statement,created,creator,closes,settled,result) VALUES (NULL, ?, ?, ?, ?, NULL, NULL);");
 		q.bind(1,stmt);
 		q.bind(2,now.toISOExtString());
 		q.bind(3,creator.id);
-		q.bind(4,closes);
+		q.bind(4,closes.toUTC.toISOExtString);
 		q.execute();
 	}
 
@@ -462,8 +462,10 @@ unittest {
 unittest {
 	auto db = getMemoryDatabase();
 	auto user = db.getUser(1);
-	db.createPrediction("This app will actually be used.", "2015-02-02T05:45:55+00:00", user);
-	db.createPrediction("Michelle Obama becomes president.", "2015-12-12T05:45:55+00:00", user);
+	auto end1 = SysTime.fromISOExtString("2015-02-02T05:45:55  +00:00");
+	db.createPrediction("This app will actually be used.", end1, user);
+	auto end2 = SysTime.fromISOExtString("2015-12-12T05:45:  55+00:00");
+	db.createPrediction("Michelle Obama becomes president.", end2, user);
 	SysTime now = Clock.currTime.toUTC;
 	foreach (p; db.predictions) {
 		assert (p.statement);
