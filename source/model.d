@@ -12,7 +12,8 @@ import std.file: exists;
 
 enum share_type {
 	yes = 1,
-	no = 2
+	no = 2,
+	balance = 3,
 }
 
 void init_empty_db(Database db) {
@@ -176,6 +177,7 @@ struct chance_change {
 	string date;
 	real chance;
 	int shares;
+	share_type type;
 }
 
 struct prediction {
@@ -216,20 +218,23 @@ struct prediction {
 	}
 
 	private void loadShares(Database db) {
-		changes ~= chance_change(created,0.5,0);
+		changes ~= chance_change(created,0.5,0,share_type.balance);
 		auto query = db.prepare("SELECT share_count, yes_order, date FROM orders WHERE prediction = ? ORDER BY date;");
 		query.bind(1, id);
 		foreach (row; query.execute()) {
 			auto amount = row.peek!int(0);
 			auto y = row.peek!int(1);
+			share_type type;
 			auto date = row.peek!string(2);
 			if (y == 1) {
 				yes_shares += amount;
+				type = share_type.yes;
 			} else {
 				assert (y == 2);
 				no_shares += amount;
+				type = share_type.no;
 			}
-			changes ~= chance_change(date,this.chance,amount);
+			changes ~= chance_change(date,this.chance,amount,type);
 		}
 		if (this.settled != "") {
 			/* last element is the balancing of the creator during settlement */

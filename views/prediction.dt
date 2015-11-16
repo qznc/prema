@@ -104,4 +104,5 @@ block body
 					time(datetime="#{change.date}") #{change.date}
 				td #{round(change.chance*100)}%
 				td #{change.shares} shares
+				td #{change.type}
 
