@@ -385,8 +385,8 @@ database getDatabase() {
 	auto db = database(path);
 	if (init) {
 		init_empty_db(db.db);
-		auto user = db.getUser(1);
-		db.createPrediction("This app will actually be used.", "2016-02-02T05:45:55+00:00", user);
+		//auto user = db.getUser(1);
+		//db.createPrediction("This app will actually be used.", "2016-02-02T05:45:55+00:00", user);
 	}
 	return db;
 }
