@@ -197,6 +197,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 			string expires = answer["expires"].to!string;
 			string issuer = answer["issuer"].to!string;
 			string email = answer["email"].to!string;
+			logInfo("start session for "~email);
 			auto session = res.startSession();
 			session.set("userEmail", email);
 			session.set("persona_expires", expires);
