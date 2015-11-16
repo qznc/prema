@@ -97,14 +97,14 @@ struct database {
 
 	prediction[] activePredictions() {
 		SysTime now = Clock.currTime.toUTC;
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes > ?;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes > ? ORDER BY closes;");
 		query.bind(1, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
 
 	prediction[] predictionsToSettle() {
 		SysTime now = Clock.currTime.toUTC;
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes < ? AND settled IS NULL;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE closes < ? AND settled IS NULL ORDER BY closes;");
 		query.bind(1, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
 	}
@@ -157,7 +157,7 @@ struct database {
 
 	auto usersActivePredictions(int userid) {
 		SysTime now = Clock.currTime.toUTC;
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes > ?;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes > ? ORDER BY closes;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
@@ -165,7 +165,7 @@ struct database {
 
 	auto usersClosedPredictions(int userid) {
 		SysTime now = Clock.currTime.toUTC;
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes < ?;");
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE creator == ? AND closes < ? ORDER BY closes;");
 		query.bind(1, userid);
 		query.bind(2, now.toISOExtString());
 		return parsePredictionQuery(query.execute());
