@@ -218,7 +218,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 void logout(HTTPServerRequest req, HTTPServerResponse res)
 {
 	if (req.session) {
-		logInfo("logout: terminate session");
+		logInfo("logout: terminate session for "~req.session.get!string("userEmail"));
 		res.terminateSession();
 		res.redirect("/");
 	} else {
