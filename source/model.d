@@ -231,6 +231,10 @@ struct prediction {
 			}
 			changes ~= chance_change(date,this.chance,amount);
 		}
+		if (this.settled != "") {
+			/* last element is the balancing of the creator during settlement */
+			changes.length -= 1;
+		}
 	}
 
 	int countShares(database db, user u, share_type t) {
