@@ -233,6 +233,18 @@ struct prediction {
 		}
 	}
 
+	int countShares(database db, user u, share_type t) {
+		auto query = db.db.prepare("SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
+		query.bind(1, this.id);
+		query.bind(2, u.id);
+		query.bind(3, t == share_type.yes ? "yes" : "no");
+		foreach (row; query.execute()) {
+			auto sum = row.peek!int(0);
+			return sum;
+		}
+		return 0;
+	}
+
 	void settle(database db, bool result) {
 		//writeln("settle "~text(this.id)~" as "~text(result));
 		/* mark prediction as settled now */
