@@ -132,6 +132,9 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 	auto count = pred.countShares(db, user, type);
 	if (count+amount < 0)
 		errors ~= "You only have "~text(count)~" shares.";
+	auto price = pred.cost(amount,type);
+	if (user.wealth < price)
+		errors ~= "That would have cost "~text(price)~"€, but you only have "~text(user.wealth)~"€.";
 	if (errors.empty) {
 		db.buy(user, pred, amount, type);
 		res.redirect(req.path);
