@@ -5,9 +5,13 @@ block body
 		tr
 			th yes
 			td(id="yes_shares") #{pred.yes_shares} shares
+			- if (req.session && your_yes_shares > 0)
+				td(id="your_yes_shares") #{your_yes_shares} are yours
 		tr
 			th no
 			td(id="no_shares") #{pred.no_shares} shares
+			- if (req.session && your_no_shares > 0)
+				td(id="no_yes_shares") #{your_no_shares} are yours
 		tr
 			th chance
 			td #{round(pred.chance * 100)}%
