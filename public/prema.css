@@ -6,6 +6,7 @@ h1 { font-size: 2em; line-height: 1.3em; font-weight: normal; }
 h2 { font-size: 1.2em; line-height: 1.3em; font-weight: normal; }
 h3 { font-size: 1em; line-height: 1.3em; font-weight: bold; }
 
+#sidebar table,
 #raw_history { font-size: 0.8em; }
 
 table th { font-weight: normal; padding-right: 1em; }
@@ -29,7 +30,7 @@ li time { color: #155764; }
 
 /** POSITION & SIZE **/
 
-body { width: 40em; margin: 0 auto; }
+body { width: 40em; margin: 0 auto; position: relative; }
 
 footer,
 header { padding: 1em; }
@@ -49,7 +50,7 @@ li { margin: .5em 0; }
 table.pred_info td,
 #raw_history td { padding-left: 1em; }
 
-li time { margin-left: 1em; }
+article li time { margin-left: 1em; }
 
 .error { padding: .5em 1em; }
 
@@ -58,3 +59,14 @@ footer { text-align: center; }
 
 footer { padding-bottom: 20em; }
 footer .version { margin-left: 3em; }
+
+#sidebar,
+article { float: left; }
+
+#sidebar { position: absolute; left: 41em; top: 5em; width: 15em; }
+
+#sidebar td { padding-right: .5em; }
+
+article { width: 38em; }
+
+footer { clear: both; }

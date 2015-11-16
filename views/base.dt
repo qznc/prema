@@ -1,5 +1,6 @@
 - import std.math : round;
-- import git_version;
+- import git_version : VER;
+- import model : getDatabase;
 doctype html
 html
 	head
@@ -26,6 +27,22 @@ html
 
 		article
 			block body
+
+		div(id="sidebar")
+			- auto orders = getDatabase().getLastOrders();
+			- if (!orders.empty)
+				p Last Orders
+				table
+					- foreach(order; getDatabase().getLastOrders())
+						tr
+							td
+								a(href="/p/#{order.predid}") p/#{order.predid}
+							td
+								span(class="share_count") #{order.share_count}
+							td
+								span(class="type") #{order.type}
+							td
+								time(datetime="#{order.date}") #{order.date}
 
 		footer
 			p

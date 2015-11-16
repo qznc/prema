@@ -16,6 +16,14 @@ enum share_type {
 	balance = 3,
 }
 
+share_type fromInt(int n) {
+	switch(n) {
+		case 1: return share_type.yes;
+		case 2: return share_type.no;
+		default: return share_type.balance;
+	}
+}
+
 void init_empty_db(Database db) {
 	db.execute("CREATE TABLE users (
 		id INTEGER PRIMARY KEY,
@@ -178,6 +186,25 @@ struct database {
 		query.bind(2,userid);
 		query.execute();
 	}
+
+	auto getLastOrders() {
+		order[] ret;
+		auto query = db.prepare("SELECT prediction, share_count, yes_order, date FROM orders ORDER BY date DESC LIMIT 10;");
+		foreach(row; query.execute()) {
+			auto predid = row.peek!int(0);
+			auto share_count = row.peek!int(1);
+			auto yes_order = row.peek!int(2);
+			auto date = row.peek!string(3);
+			ret ~= order(predid, share_count, fromInt(yes_order), date);
+		}
+		return ret;
+	}
+}
+
+struct order {
+	int predid, share_count;
+	share_type type;
+	string date;
 }
 
 struct chance_change {
