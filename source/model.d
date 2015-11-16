@@ -241,12 +241,8 @@ struct prediction {
 		auto query = db.db.prepare("SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
 		query.bind(1, this.id);
 		query.bind(2, u.id);
-		query.bind(3, t == share_type.yes ? "yes" : "no");
-		foreach (row; query.execute()) {
-			auto sum = row.peek!int(0);
-			return sum;
-		}
-		return 0;
+		query.bind(3, t);
+		return query.execute().oneValue!int;
 	}
 
 	void settle(database db, bool result) {
