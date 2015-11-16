@@ -13,9 +13,9 @@ html
 		header
 			#personaButtons
 				- if (!req.session)
-					button#signin(onclick='javascript:navigator.id.request()') Sign In
+					button#signin(onclick='javascript:navigator.id.request()') Log In
 				- else
-					button#signout(onclick='javascript:navigator.id.logout()') Sign Out
+					button#signout(onclick='javascript:navigator.id.logout()') Log Out
 			p
 				a(href="/") Overview
 				- if (req.session)
