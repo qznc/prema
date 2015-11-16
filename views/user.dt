@@ -5,16 +5,19 @@ block body
 		tr
 			th wealth
 			td #{user.wealth}€
+	- import model: prediction;
+	- void predList(prediction[] preds, string no_msg)
+		- if (preds.empty)
+			p(class="no_preds") !{no_msg}
+		- else
+			ul
+				- foreach (pred; preds)
+					li
+						a(href="/p/#{pred.id}") #{pred.statement}
 	h2 Active Predictions
-		ul
-			- foreach (pred; predsActive)
-				li
-					a(href="/p/#{pred.id}") #{pred.statement}
+	- predList(predsActive, "No active predictions. <a href=\"/create\">Create some</a>!");
 	h2 Closed Predictions
-		ul
-			- foreach (pred; predsClosed)
-				li
-					a(href="/p/#{pred.id}") #{pred.statement}
+	- predList(predsClosed, "No closed predications.");
 	h2 Change Username
 		form(method="POST")
 			input(type="text", name="new_name", value="#{user.name}", size=12)
