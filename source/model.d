@@ -99,8 +99,7 @@ struct database {
 			auto email = row.peek!string(1);
 			return user(id, name, email);
 		}
-		writeln("User "~text(id)~" does not exist.");
-		return user(0, "nil", "does@not.exist");
+		throw new Exception("User "~text(id)~" does not exist.");
 	}
 
 	user getUser(string email) {
@@ -132,8 +131,7 @@ struct database {
 		foreach (row; query.execute()) {
 			return parsePredictionQueryRow(row);
 		}
-		writeln("Prediction "~text(id)~" does not exist.");
-		assert(0);
+		throw new Exception("Prediction "~text(id)~" does not exist.");
 	}
 
 	user[] users() {
