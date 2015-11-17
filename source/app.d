@@ -180,11 +180,16 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto id = to!int(req.params["userID"]);
 	auto db = getDatabase();
+	auto user = db.getUser(id);
 	if (req.method == HTTPMethod.POST) {
+		enforceHTTP(req.session,
+			HTTPStatus.badRequest, "must be logged in to change name");
+		auto email = req.session.get!string("userEmail");
+		enforceHTTP(email == user.email,
+			HTTPStatus.badRequest, "you can only change your own name");
 		auto new_name = req.form["new_name"];
 		db.setUserName(id, new_name);
 	}
-	auto user = db.getUser(id);
 	string pageTitle = user.name;
 	auto cash = db.getCash(id);
 	auto predsActive = db.usersActivePredictions(id);
