@@ -10,4 +10,5 @@
 	},
 	"versions": ["VibeDefaultMain"],
 	"lflags": ["sqlite3/libsqlite3.so"],
+	"preBuildCommands": ["cd sqlite3 && make"],
 }
