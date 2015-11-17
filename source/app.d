@@ -151,10 +151,11 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 	if (count+amount < 0)
 		errors ~= "You only have "~text(count)~" shares.";
 	auto price = pred.cost(amount,type);
-	if (user.wealth < price)
-		errors ~= "That would have cost "~text(price)~"€, but you only have "~text(user.wealth)~"€.";
+	auto cash = db.getCash(user.id);
+	if (cash < price)
+		errors ~= "That would have cost "~text(price)~"€, but you only have "~text(cash)~"€.";
 	if (errors.empty) {
-		db.buy(user, pred, amount, type);
+		db.buy(user.id, id, amount, type, price);
 		res.redirect(req.path);
 	} else {
 		renderPrediction(pred, db, errors, req, res);
@@ -173,7 +174,7 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 	enforceHTTP(user.id == pred.creator,
 		HTTPStatus.badRequest, "only creator can settle");
 	auto result = req.form["settlement"] == "true";
-	pred.settle(db, result);
+	db.settle(pred.id, result);
 	res.redirect("/p/"~text(pred.id));
 }
 
@@ -187,9 +188,10 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 	}
 	auto user = db.getUser(id);
 	string pageTitle = user.name;
+	auto cash = db.getCash(id);
 	auto predsActive = db.usersActivePredictions(id);
 	auto predsClosed = db.usersClosedPredictions(id);
-	res.render!("user.dt", pageTitle, user, predsActive, predsClosed, req);
+	res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
