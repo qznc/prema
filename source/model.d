@@ -11,6 +11,7 @@ import std.exception: enforce;
 import std.file: exists;
 
 enum share_type {
+	init = 0,
 	yes = 1,
 	no = 2,
 	balance = 3,
@@ -27,16 +28,17 @@ share_type fromInt(int n) {
 /** All money is represented as millicredits **/
 struct millicredits {
 	long amount;
-	this(real a) {
-		this.amount = to!long(a * 1000);
-	}
 	bool opEquals()(auto ref const millicredits s) const {
 		return amount == s.amount;
 	}
 	int opCmp(ref const millicredits s) const {
-		if      (amount < s.amount) return -1;
-		else if (amount > s.amount) return 1;
+		if      (amount > s.amount) return -1;
+		else if (amount < s.amount) return 1;
 		else return 0;
+	}
+	void toString(scope void delegate(const(char)[]) sink) const {
+		sink.formattedWrite("%.3f", amount / 1000.0);
+		sink("¢");
 	}
 }
 
@@ -74,6 +76,7 @@ void init_empty_db(Database db) {
 		receiver INTEGER, /* userid */
 		amount INTEGER,
 		prediction INTEGER, /* which prediction? */
+		yes_order INTEGER, /* what was bought 0=neither, 1=yes, 2=no */
 		date TEXT NOT NULL /* ISO8601 date */
 		);");
 }
@@ -96,10 +99,11 @@ struct database {
 			auto email = row.peek!string(1);
 			return user(id, name, email);
 		}
-		assert(0);
+		writeln("User "~text(id)~" does not exist.");
+		return user(0, "nil", "does@not.exist");
 	}
 
-	user getUser(const(string) email) {
+	user getUser(string email) {
 		auto query = db.prepare("SELECT id, name FROM users WHERE email = ?");
 		query.bind(1, email);
 		bool exists = false;
@@ -108,6 +112,7 @@ struct database {
 			auto name = row.peek!string(1);
 			return user(id, name, email);
 		}
+		writeln("user "~email~" does not exist yet. Create it.");
 		/* user does not exist yet */
 		auto name = emailPrefix(email);
 		db.execute("BEGIN TRANSACTION;");
@@ -116,13 +121,19 @@ struct database {
 		q.bind(2, email);
 		q.execute();
 		auto user = getUser(email);
-		transferMoney(FUNDER_ID, user.id, millicredits(1000), 0);
+		transferMoney(FUNDER_ID, user.id, millicredits(1000), 0, share_type.init);
 		db.execute("END TRANSACTION;");
 		return user;
 	}
 
 	prediction getPrediction(int id) {
-		return prediction(id, db);
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE id = ?;");
+		query.bind(1, id);
+		foreach (row; query.execute()) {
+			return parsePredictionQueryRow(row);
+		}
+		writeln("Prediction "~text(id)~" does not exist.");
+		assert(0);
 	}
 
 	user[] users() {
@@ -140,16 +151,20 @@ struct database {
 	private auto parsePredictionQuery(ResultRange query) {
 		prediction[] ret;
 		foreach (row; query) {
-			auto i = row.peek!int(0);
-			auto s = row.peek!string(1);
-			auto created = row.peek!string(2);
-			auto creator = row.peek!string(3);
-			auto closes  = row.peek!string(4);
-			auto settled = row.peek!string(5);
-			auto result = row.peek!string(6);
-			ret ~= prediction(i,s,created,closes,settled,result,db);
+			ret ~= parsePredictionQueryRow(row);
 		}
 		return ret;
+	}
+
+	private auto parsePredictionQueryRow(T)(T row) {
+		auto i = row.peek!int(0);
+		auto s = row.peek!string(1);
+		auto created = row.peek!string(2);
+		auto creator = row.peek!int(3);
+		auto closes  = row.peek!string(4);
+		auto settled = row.peek!string(5);
+		auto result = row.peek!string(6);
+		return prediction(i,s,created,creator,closes,settled,result,db);
 	}
 
 	prediction[] activePredictions() {
@@ -186,12 +201,12 @@ struct database {
 	private void buyWithoutTransaction(int uid, int pid, int amount, share_type t, millicredits price) {
 		enforce (getCash(uid) >= price, "not enough cash");
 		transferShares(uid, pid, amount, t);
-		transferMoney(uid, MARKETS_ID, price, pid);
+		transferMoney(uid, MARKETS_ID, price, pid, t);
 	}
 
 	private void transferShares(int uid, int pid, int amount, share_type t) {
 		auto now = Clock.currTime.toUTC.toISOExtString;
-		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?, ?);");
+		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
 		q.bind(1, uid);
 		q.bind(2, pid);
 		q.bind(3, amount);
@@ -200,14 +215,15 @@ struct database {
 		q.execute();
 	}
 
-	private void transferMoney(int sender, int receiver, millicredits amount, int predid) {
+	private void transferMoney(int sender, int receiver, millicredits amount, int predid, share_type t) {
 		auto now = Clock.currTime.toUTC.toISOExtString;
 		auto q = db.prepare("INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, ?);");
 		q.bind(1, sender);
 		q.bind(2, receiver);
 		q.bind(3, amount.amount);
 		q.bind(4, predid);
-		q.bind(5, now);
+		q.bind(5, t);
+		q.bind(6, now);
 		q.execute();
 	}
 
@@ -259,23 +275,29 @@ struct database {
 
 	auto getUsersPredStats(int userid, int predid) {
 		predStats ret;
-		auto query = db.prepare("SELECT SUM(share_count), SUM(price) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
-		query.bind(1, predid);
-		query.bind(2, userid);
-		query.bind(3, 1);
-		foreach(row; query.execute()) {
-			ret.yes_shares = row.peek!int(0);
-			ret.yes_price = row.peek!double(1);
+		{
+			auto query = db.prepare("SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
+			query.bind(1, predid);
+			query.bind(2, userid);
+			query.bind(3, 1);
+			ret.yes_shares = query.execute().oneValue!int;
+			query.reset();
+			query.bind(1, predid);
+			query.bind(2, userid);
+			query.bind(3, 2);
+			ret.no_shares = query.execute().oneValue!int;
 		}
-		query.reset();
-		query.bind(1, predid);
-		query.bind(2, userid);
-		query.bind(3, 2);
-		foreach(row; query.execute()) {
-			ret.no_shares = row.peek!int(0);
-			ret.no_price = row.peek!double(1);
-		}
+		ret.yes_price = getInvestment(userid, predid, share_type.yes);
+		ret.no_price = getInvestment(userid, predid, share_type.no);
 		return ret;
+	}
+
+	private millicredits getInvestment(int userid, int predid, share_type t) {
+		auto query = db.prepare("SELECT SUM(amount) FROM transactions WHERE prediction=? AND sender=? AND yes_order=?;");
+		query.bind(1, predid);
+		query.bind(2, userid);
+		query.bind(3, t);
+		return millicredits(query.execute().oneValue!long);
 	}
 
 	void settle(int pid, bool result) {
@@ -311,7 +333,7 @@ struct database {
 				auto userid = row.peek!int(0);
 				auto amount = row.peek!int(1);
 				writeln("order "~text(amount)~" shares for "~text(userid));
-				transferMoney(MARKETS_ID, userid, millicredits(amount), pred.id);
+				transferMoney(MARKETS_ID, userid, millicredits(1000*amount), pred.id, share_type.balance);
 			}
 		}
 		db.execute("END TRANSACTION;");
@@ -320,7 +342,7 @@ struct database {
 
 struct predStats {
 	int yes_shares, no_shares;
-	double yes_price, no_price;
+	millicredits yes_price, no_price;
 }
 
 struct order {
@@ -343,26 +365,11 @@ struct prediction {
 	string created, closes, settled, result;
 	chance_change[] changes;
 	@disable this();
-	this(int id, Database db) {
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE id = ?;");
-		query.bind(1, id);
-		foreach (row; query.execute()) {
-			this.id = row.peek!int(0);
-			assert (this.id == id);
-			this.statement = row.peek!string(1);
-			this.created = row.peek!string(2);
-			this.creator = row.peek!int(3);
-			this.closes  = row.peek!string(4);
-			this.settled = row.peek!string(5);
-			this.result = row.peek!string(6);
-			break;
-		}
-		loadShares(db);
-	}
-	this(int id, string statement, string created, string closes, string settled, string result, Database db) {
+	this(int id, string statement, string created, int creator, string closes, string settled, string result, Database db) {
 		this.id = id;
 		this.statement = statement;
 		this.created = created;
+		this.creator = creator;
 		this.closes = closes;
 		this.settled = settled;
 		this.result = result;
@@ -414,10 +421,12 @@ struct prediction {
 	/* cost of buying a certain amount of shares */
 	millicredits cost(int amount, share_type t) const {
 		if (t == share_type.yes) {
-			return millicredits(LMSR_cost(b, yes_shares, no_shares, amount));
+			auto c = LMSR_cost(b, yes_shares, no_shares, amount);
+			return millicredits(to!long(1000.0 * c));
 		} else {
 			assert (t == share_type.no);
-			return millicredits(LMSR_cost(b, no_shares, yes_shares, amount));
+			auto c = LMSR_cost(b, no_shares, yes_shares, amount);
+			return millicredits(to!long(1000.0 * c));
 		}
 	}
 

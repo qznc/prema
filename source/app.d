@@ -40,8 +40,6 @@ shared static this()
 	settings.bindAddresses = ["141.3.44.16", host];
 	settings.sessionStore = new MemorySessionStore;
 	listenHTTP(settings, router);
-
-	logInfo("Please open http://"~host~":8080/ in your browser.");
 }
 
 void index(HTTPServerRequest req, HTTPServerResponse res)
@@ -153,7 +151,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 	auto price = pred.cost(amount,type);
 	auto cash = db.getCash(user.id);
 	if (cash < price)
-		errors ~= "That would have cost "~text(price)~"€, but you only have "~text(cash)~"€.";
+		errors ~= "That would have cost "~text(price)~", but you only have "~text(cash)~".";
 	if (errors.empty) {
 		db.buy(user.id, id, amount, type, price);
 		res.redirect(req.path);
@@ -204,6 +202,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 		logInfo("session already started for "~req.session.get!string("userEmail"));
 		return;
 	}
+	logInfo("verifyPersona");
 
 	requestHTTP("https://verifier.login.persona.org/verify",
 		(scope req) {

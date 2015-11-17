@@ -4,7 +4,7 @@ block body
 	table
 		tr
 			th cash
-			td #{cash}€
+			td #{cash}
 	- import model: prediction;
 	- void predList(prediction[] preds, string no_msg)
 		- if (preds.empty)
