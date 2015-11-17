@@ -42,6 +42,10 @@ struct millicredits {
 	}
 }
 
+millicredits credits(real x) {
+	return millicredits(to!long(x * 1000.0));
+}
+
 const MARKETS_ID = 1;
 const FUNDER_ID = 2;
 
@@ -120,7 +124,7 @@ struct database {
 		q.bind(2, email);
 		q.execute();
 		auto user = getUser(email);
-		transferMoney(FUNDER_ID, user.id, millicredits(1000), 0, share_type.init);
+		transferMoney(FUNDER_ID, user.id, credits(1000), 0, share_type.init);
 		db.execute("END TRANSACTION;");
 		return user;
 	}
@@ -331,7 +335,7 @@ struct database {
 				auto userid = row.peek!int(0);
 				auto amount = row.peek!int(1);
 				writeln("order "~text(amount)~" shares for "~text(userid));
-				transferMoney(MARKETS_ID, userid, millicredits(1000*amount), pred.id, share_type.balance);
+				transferMoney(MARKETS_ID, userid, credits(amount), pred.id, share_type.balance);
 			}
 		}
 		db.execute("END TRANSACTION;");
@@ -478,7 +482,7 @@ database getMemoryDatabase() {
 }
 
 immutable real b = 100;
-immutable max_loss = millicredits(to!long(b * log(2) * 1000.0));
+immutable max_loss = credits(b * log(2));
 
 real LMSR_C(real b, real yes, real no) pure nothrow @safe {
 	return b * log(exp(yes/b) + exp(no/b));
