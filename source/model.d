@@ -32,8 +32,8 @@ struct millicredits {
 		return amount == s.amount;
 	}
 	int opCmp(ref const millicredits s) const {
-		if      (amount > s.amount) return -1;
-		else if (amount < s.amount) return 1;
+		if      (amount < s.amount) return -1;
+		else if (amount > s.amount) return 1;
 		else return 0;
 	}
 	void toString(scope void delegate(const(char)[]) sink) const {
