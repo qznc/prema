@@ -279,18 +279,18 @@ There are various predictions listed in the overview.
 Pick one.
 Then buy 'yes' or 'no' shares depending on
 whether you think the prediction will turn out true or false.
-One share costs at most 1.00€.
+One share costs at most 1.00¢.
 How much exactly depends on the market.
 When the prediction is closed and settled,
-you get 1.00€ for each correct share.
+you get 1.00¢ for each correct share.
 
 For example,
 we have a prediction, which is currently at 70%.
-You could buy a yes-share for 0.70€.
-If it turns out true, you get 1.00€ back,
-which is a profit of 0.30€.
-In contrast, a no-share costs 0.30€
-and promises a profit of 0.70€.
+You could buy a yes-share for 0.70¢.
+If it turns out true, you get 1.00¢ back,
+which is a profit of 0.30¢.
+In contrast, a no-share costs 0.30¢
+and promises a profit of 0.70¢.
 In gambling terms,
 these are odds slightly above 1:2.3.
 

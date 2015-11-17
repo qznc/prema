@@ -63,10 +63,10 @@
 			var price = document.getElementById("price");
 			var future_chance = document.getElementById("future_chance");
 			if (share_type.value == "yes") {
-				price.innerHTML = roundDigits(LMSR_cost(yes,no,amount),2)+"€";
+				price.innerHTML = roundDigits(LMSR_cost(yes,no,amount),2)+"¢";
 				future_chance.innerHTML = Math.round(LMSR_chance(yes+amount,no)*100)+"%";
 			} else {
-				price.innerHTML = roundDigits(LMSR_cost(no,yes,amount),2)+"€";
+				price.innerHTML = roundDigits(LMSR_cost(no,yes,amount),2)+"¢";
 				future_chance.innerHTML = Math.round(LMSR_chance(yes,no+amount)*100)+"%";
 			}
 		}
