@@ -64,18 +64,20 @@ void renderPrediction(
 	string email = "@@";
 	int your_yes_shares = 0;
 	int your_no_shares = 0;
+	predStats predStats;
 	if (req.session) {
 		email = req.session.get!string("userEmail");
 		auto user = db.getUser(email);
 		your_yes_shares = pred.countShares(db, user, share_type.yes);
 		your_no_shares = pred.countShares(db, user, share_type.no);
+		predStats = db.getUsersPredStats(user.id, pred.id);
 	}
 	bool can_settle = email == creator.email;
 	auto closed = now > SysTime.fromISOExtString(pred.closes);
 	auto settled = pred.settled !is null;
 	string pageTitle = pred.statement;
 	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled,
-		can_settle, your_yes_shares, your_no_shares, errors, req);
+		can_settle, predStats, your_yes_shares, your_no_shares, errors, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)

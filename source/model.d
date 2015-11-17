@@ -199,6 +199,32 @@ struct database {
 		}
 		return ret;
 	}
+
+	auto getUsersPredStats(int userid, int predid) {
+		predStats ret;
+		auto query = db.prepare("SELECT SUM(share_count), SUM(price) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
+		query.bind(1, predid);
+		query.bind(2, userid);
+		query.bind(3, 1);
+		foreach(row; query.execute()) {
+			ret.yes_shares = row.peek!int(0);
+			ret.yes_price = row.peek!double(1);
+		}
+		query.reset();
+		query.bind(1, predid);
+		query.bind(2, userid);
+		query.bind(3, 2);
+		foreach(row; query.execute()) {
+			ret.no_shares = row.peek!int(0);
+			ret.no_price = row.peek!double(1);
+		}
+		return ret;
+	}
+}
+
+struct predStats {
+	int yes_shares, no_shares;
+	double yes_price, no_price;
 }
 
 struct order {
