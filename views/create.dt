@@ -12,7 +12,7 @@ block body
 			| .
 		p
 			button Create
-		p Settlement might cost up to #{max_loss}€. Some advice for predictions:
+		p Settlement might cost up to #{max_loss}. Some advice for predictions:
 		ul
 			li Predictions start at 50%. Try to design them accordingly.
 			li If 50% does not match your belief, trade immediatelly after creation.

@@ -7,13 +7,13 @@ block body
 			td(id="yes_shares") #{pred.yes_shares} shares
 			- if (req.session && predStats.yes_shares > 0)
 				td(id="your_yes_shares") #{predStats.yes_shares} are yours
-				td(id="your_yes_price") #{predStats.yes_price}€ paid
+				td(id="your_yes_price") #{predStats.yes_price} paid
 		tr
 			th no
 			td(id="no_shares") #{pred.no_shares} shares
 			- if (req.session && predStats.no_shares > 0)
 				td(id="your_no_shares") #{predStats.no_shares} are yours
-				td(id="your_no_price") #{predStats.no_price}€ paid
+				td(id="your_no_price") #{predStats.no_price} paid
 		tr
 			th chance
 			td #{round(pred.chance * 100)}%
@@ -44,7 +44,7 @@ block body
 					option(value="yes") yes
 					option(value="no") no
 				| for
-				span(class="price", id="price") 0.00€
+				span(class="price", id="price") 0
 				br
 				| which changes the chance to
 				span(class="chance", id="future_chance") #{round(pred.chance*100)}%

@@ -3,8 +3,8 @@ extends base
 block body
 	table
 		tr
-			th wealth
-			td #{user.wealth}€
+			th cash
+			td #{cash}
 	- import model: prediction;
 	- void predList(prediction[] preds, string no_msg)
 		- if (preds.empty)

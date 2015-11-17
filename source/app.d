@@ -40,8 +40,6 @@ shared static this()
 	settings.bindAddresses = ["141.3.44.16", host];
 	settings.sessionStore = new MemorySessionStore;
 	listenHTTP(settings, router);
-
-	logInfo("Please open http://"~host~":8080/ in your browser.");
 }
 
 void index(HTTPServerRequest req, HTTPServerResponse res)
@@ -151,10 +149,11 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 	if (count+amount < 0)
 		errors ~= "You only have "~text(count)~" shares.";
 	auto price = pred.cost(amount,type);
-	if (user.wealth < price)
-		errors ~= "That would have cost "~text(price)~"€, but you only have "~text(user.wealth)~"€.";
+	auto cash = db.getCash(user.id);
+	if (cash < price)
+		errors ~= "That would have cost "~text(price)~", but you only have "~text(cash)~".";
 	if (errors.empty) {
-		db.buy(user, pred, amount, type);
+		db.buy(user.id, id, amount, type, price);
 		res.redirect(req.path);
 	} else {
 		renderPrediction(pred, db, errors, req, res);
@@ -173,7 +172,7 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 	enforceHTTP(user.id == pred.creator,
 		HTTPStatus.badRequest, "only creator can settle");
 	auto result = req.form["settlement"] == "true";
-	pred.settle(db, result);
+	db.settle(pred.id, result);
 	res.redirect("/p/"~text(pred.id));
 }
 
@@ -187,9 +186,10 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 	}
 	auto user = db.getUser(id);
 	string pageTitle = user.name;
+	auto cash = db.getCash(id);
 	auto predsActive = db.usersActivePredictions(id);
 	auto predsClosed = db.usersClosedPredictions(id);
-	res.render!("user.dt", pageTitle, user, predsActive, predsClosed, req);
+	res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
@@ -202,6 +202,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 		logInfo("session already started for "~req.session.get!string("userEmail"));
 		return;
 	}
+	logInfo("verifyPersona");
 
 	requestHTTP("https://verifier.login.persona.org/verify",
 		(scope req) {
@@ -278,18 +279,18 @@ There are various predictions listed in the overview.
 Pick one.
 Then buy 'yes' or 'no' shares depending on
 whether you think the prediction will turn out true or false.
-One share costs at most 1.00€.
+One share costs at most 1.00¢.
 How much exactly depends on the market.
 When the prediction is closed and settled,
-you get 1.00€ for each correct share.
+you get 1.00¢ for each correct share.
 
 For example,
 we have a prediction, which is currently at 70%.
-You could buy a yes-share for 0.70€.
-If it turns out true, you get 1.00€ back,
-which is a profit of 0.30€.
-In contrast, a no-share costs 0.30€
-and promises a profit of 0.70€.
+You could buy a yes-share for 0.70¢.
+If it turns out true, you get 1.00¢ back,
+which is a profit of 0.30¢.
+In contrast, a no-share costs 0.30¢
+and promises a profit of 0.70¢.
 In gambling terms,
 these are odds slightly above 1:2.3.
 

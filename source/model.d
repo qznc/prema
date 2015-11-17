@@ -4,13 +4,14 @@ import d2sqlite3;
 import std.algorithm: findSplitBefore;
 import std.stdio: writeln;
 import std.math: log, exp, isNaN, abs;
-import std.conv: text;
+import std.conv: text, to;
 import std.format: formatValue, singleSpec, formattedWrite;
 import std.datetime: Clock, SysTime;
 import std.exception: enforce;
 import std.file: exists;
 
 enum share_type {
+	init = 0,
 	yes = 1,
 	no = 2,
 	balance = 3,
@@ -24,15 +25,34 @@ share_type fromInt(int n) {
 	}
 }
 
+/** All money is represented as millicredits **/
+struct millicredits {
+	long amount;
+	bool opEquals()(auto ref const millicredits s) const {
+		return amount == s.amount;
+	}
+	int opCmp(ref const millicredits s) const {
+		if      (amount > s.amount) return -1;
+		else if (amount < s.amount) return 1;
+		else return 0;
+	}
+	void toString(scope void delegate(const(char)[]) sink) const {
+		sink.formattedWrite("%.3f", amount / 1000.0);
+		sink("¢");
+	}
+}
+
+const MARKETS_ID = 1;
+const FUNDER_ID = 2;
+
 void init_empty_db(Database db) {
 	db.execute("CREATE TABLE users (
 		id INTEGER PRIMARY KEY,
 		name TEXT NOT NULL,
-		email TEXT NOT NULL,
-		wealth REAL
+		email TEXT NOT NULL
 		);");
-	db.execute("INSERT INTO users VALUES (1, 'root', 'root@localhost', 1000);");
-	db.execute("INSERT INTO users VALUES (NULL, 'dummy', 'nobody@localhost', 1000);");
+	db.execute("INSERT INTO users VALUES ("~text(MARKETS_ID)~", 'markets', 'markets');");
+	db.execute("INSERT INTO users VALUES ("~text(FUNDER_ID)~", 'funder', 'funder');");
 	db.execute("CREATE TABLE predictions (
 		id INTEGER PRIMARY KEY,
 		statement TEXT NOT NULL,
@@ -48,8 +68,16 @@ void init_empty_db(Database db) {
 		prediction INTEGER, /* which prediction? */
 		share_count INTEGER, /* amount of shares traded */
 		yes_order INTEGER, /* what was bought 1=yes, 2=no */
-		date TEXT NOT NULL, /* ISO8601 date */
-		price REAL /* might be negative! */
+		date TEXT NOT NULL /* ISO8601 date */
+		);");
+	db.execute("CREATE TABLE transactions (
+		id INTEGER PRIMARY KEY,
+		sender INTEGER, /* userid */
+		receiver INTEGER, /* userid */
+		amount INTEGER,
+		prediction INTEGER, /* which prediction? */
+		yes_order INTEGER, /* what was bought 0=neither, 1=yes, 2=no */
+		date TEXT NOT NULL /* ISO8601 date */
 		);");
 }
 
@@ -64,27 +92,58 @@ struct database {
 	}
 
 	user getUser(int id) {
-		return user(id, db);
+		auto query = db.prepare("SELECT name, email FROM users WHERE id=?");
+		query.bind(1, id);
+		foreach (row; query.execute()) {
+			auto name = row.peek!string(0);
+			auto email = row.peek!string(1);
+			return user(id, name, email);
+		}
+		writeln("User "~text(id)~" does not exist.");
+		return user(0, "nil", "does@not.exist");
 	}
 
-	user getUser(const(string) email) {
-		return user(email, db);
+	user getUser(string email) {
+		auto query = db.prepare("SELECT id, name FROM users WHERE email = ?");
+		query.bind(1, email);
+		bool exists = false;
+		foreach (row; query.execute()) {
+			auto id = row.peek!int(0);
+			auto name = row.peek!string(1);
+			return user(id, name, email);
+		}
+		writeln("user "~email~" does not exist yet. Create it.");
+		/* user does not exist yet */
+		auto name = emailPrefix(email);
+		db.execute("BEGIN TRANSACTION;");
+		auto q = db.prepare("INSERT INTO users VALUES (NULL, ?, ?);");
+		q.bind(1, name);
+		q.bind(2, email);
+		q.execute();
+		auto user = getUser(email);
+		transferMoney(FUNDER_ID, user.id, millicredits(1000), 0, share_type.init);
+		db.execute("END TRANSACTION;");
+		return user;
 	}
 
 	prediction getPrediction(int id) {
-		return prediction(id, db);
+		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE id = ?;");
+		query.bind(1, id);
+		foreach (row; query.execute()) {
+			return parsePredictionQueryRow(row);
+		}
+		writeln("Prediction "~text(id)~" does not exist.");
+		assert(0);
 	}
 
 	user[] users() {
-		auto query = db.execute("SELECT id,name,email,wealth FROM users ORDER BY id;");
+		auto query = db.execute("SELECT id,name,email FROM users ORDER BY id;");
 		user[] result;
 		foreach (row; query) {
 			auto id = row.peek!int(0);
 			auto name = row.peek!string(1);
 			auto email = row.peek!string(2);
-			auto wealth = row.peek!real(3);
-			assert (!isNaN(wealth));
-			result ~= user(id,name,email,wealth);
+			result ~= user(id,name,email);
 		}
 		return result;
 	}
@@ -92,16 +151,20 @@ struct database {
 	private auto parsePredictionQuery(ResultRange query) {
 		prediction[] ret;
 		foreach (row; query) {
-			auto i = row.peek!int(0);
-			auto s = row.peek!string(1);
-			auto created = row.peek!string(2);
-			auto creator = row.peek!string(3);
-			auto closes  = row.peek!string(4);
-			auto settled = row.peek!string(5);
-			auto result = row.peek!string(6);
-			ret ~= prediction(i,s,created,closes,settled,result,db);
+			ret ~= parsePredictionQueryRow(row);
 		}
 		return ret;
+	}
+
+	private auto parsePredictionQueryRow(T)(T row) {
+		auto i = row.peek!int(0);
+		auto s = row.peek!string(1);
+		auto created = row.peek!string(2);
+		auto creator = row.peek!int(3);
+		auto closes  = row.peek!string(4);
+		auto settled = row.peek!string(5);
+		auto result = row.peek!string(6);
+		return prediction(i,s,created,creator,closes,settled,result,db);
 	}
 
 	prediction[] activePredictions() {
@@ -129,39 +192,49 @@ struct database {
 		q.execute();
 	}
 
-	void buy(ref user u, ref prediction p, int amount, share_type t, real price) {
-		enforce (p.cost(amount,t) == price, "assumed the wrong price: "~text(p.cost(amount,t))~" != "~text(price));
-		buy(u,p,amount,t);
+	void buy(int uid, int pid, int amount, share_type t, millicredits price) {
+		db.execute("BEGIN TRANSACTION;");
+		buyWithoutTransaction(uid, pid, amount, t, price);
+		db.execute("END TRANSACTION;");
 	}
-	void buy(ref user u, ref prediction p, int amount, share_type t) {
-		auto price = p.cost(amount,t);
-		enforce (u.wealth >= price, "not enough wealth: "~text(u.wealth)~" < "~text(price));
-		/* update local data */
-		if (t == share_type.yes) {
-			p.yes_shares += amount;
-		} else {
-			assert (t == share_type.no);
-			p.no_shares += amount;
-		}
-		u.wealth -= price;
-		/* update database */
+
+	private void buyWithoutTransaction(int uid, int pid, int amount, share_type t, millicredits price) {
+		enforce (getCash(uid) >= price, "not enough cash");
+		transferShares(uid, pid, amount, t);
+		transferMoney(uid, MARKETS_ID, price, pid, t);
+	}
+
+	private void transferShares(int uid, int pid, int amount, share_type t) {
 		auto now = Clock.currTime.toUTC.toISOExtString;
-		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?, ?);");
-		q.bind(1, u.id);
-		q.bind(2, p.id);
+		auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
+		q.bind(1, uid);
+		q.bind(2, pid);
 		q.bind(3, amount);
 		q.bind(4, t);
 		q.bind(5, now);
-		q.bind(6, price);
 		q.execute();
-		giveWealth(u.id, -price);
 	}
 
-	void giveWealth(int userid, real price) {
-		auto q = db.prepare("UPDATE users SET wealth = wealth + ? WHERE id = ?;");
-		q.bind(1, price);
-		q.bind(2, userid);
+	private void transferMoney(int sender, int receiver, millicredits amount, int predid, share_type t) {
+		auto now = Clock.currTime.toUTC.toISOExtString;
+		auto q = db.prepare("INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, ?);");
+		q.bind(1, sender);
+		q.bind(2, receiver);
+		q.bind(3, amount.amount);
+		q.bind(4, predid);
+		q.bind(5, t);
+		q.bind(6, now);
 		q.execute();
+	}
+
+	millicredits getCash(int userid) {
+		auto query = db.prepare("SELECT SUM(amount) FROM transactions WHERE sender = ?;");
+		query.bind(1, userid);
+		auto spent = query.execute().oneValue!long;
+		query = db.prepare("SELECT SUM(amount) FROM transactions WHERE receiver = ?;");
+		query.bind(1, userid);
+		auto received = query.execute().oneValue!long;
+		return millicredits(received - spent);
 	}
 
 	auto usersActivePredictions(int userid) {
@@ -202,29 +275,74 @@ struct database {
 
 	auto getUsersPredStats(int userid, int predid) {
 		predStats ret;
-		auto query = db.prepare("SELECT SUM(share_count), SUM(price) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
-		query.bind(1, predid);
-		query.bind(2, userid);
-		query.bind(3, 1);
-		foreach(row; query.execute()) {
-			ret.yes_shares = row.peek!int(0);
-			ret.yes_price = row.peek!double(1);
+		{
+			auto query = db.prepare("SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
+			query.bind(1, predid);
+			query.bind(2, userid);
+			query.bind(3, 1);
+			ret.yes_shares = query.execute().oneValue!int;
+			query.reset();
+			query.bind(1, predid);
+			query.bind(2, userid);
+			query.bind(3, 2);
+			ret.no_shares = query.execute().oneValue!int;
 		}
-		query.reset();
-		query.bind(1, predid);
-		query.bind(2, userid);
-		query.bind(3, 2);
-		foreach(row; query.execute()) {
-			ret.no_shares = row.peek!int(0);
-			ret.no_price = row.peek!double(1);
-		}
+		ret.yes_price = getInvestment(userid, predid, share_type.yes);
+		ret.no_price = getInvestment(userid, predid, share_type.no);
 		return ret;
+	}
+
+	private millicredits getInvestment(int userid, int predid, share_type t) {
+		auto query = db.prepare("SELECT SUM(amount) FROM transactions WHERE prediction=? AND sender=? AND yes_order=?;");
+		query.bind(1, predid);
+		query.bind(2, userid);
+		query.bind(3, t);
+		return millicredits(query.execute().oneValue!long);
+	}
+
+	void settle(int pid, bool result) {
+		auto now = Clock.currTime.toUTC.toISOExtString;
+		db.execute("BEGIN TRANSACTION;");
+		auto pred = getPrediction(pid); // within TRANSACTION
+		/* mark prediction as settled now */
+		{
+			auto query = db.prepare("UPDATE predictions SET settled=?, result=? WHERE id=?;");
+			query.bind(1, now);
+			query.bind(2, result ? "yes" : "no");
+			query.bind(3, pred.id);
+			query.execute();
+		}
+		/* The market maker/creator has to balance the shares,
+		   which means he buys shares until yes==no. */
+		{
+			auto amount = abs(pred.yes_shares - pred.no_shares);
+			if (amount > 0) {
+				auto t = pred.yes_shares < pred.no_shares ? share_type.yes : share_type.no;
+				auto price = pred.cost(amount, t);
+				buyWithoutTransaction(pred.creator, pred.id, amount, t, price);
+				//writeln("creator buys "~text(amount)~" shares of "~text(t));
+			}
+		}
+		/* payout */
+		{
+			auto query = db.prepare("SELECT user, SUM(share_count) FROM orders WHERE prediction=? AND yes_order=?;");
+			query.bind(1, pred.id);
+			query.bind(2, result ? 1 : 2);
+			int[int] shares;
+			foreach (row; query.execute()) {
+				auto userid = row.peek!int(0);
+				auto amount = row.peek!int(1);
+				writeln("order "~text(amount)~" shares for "~text(userid));
+				transferMoney(MARKETS_ID, userid, millicredits(1000*amount), pred.id, share_type.balance);
+			}
+		}
+		db.execute("END TRANSACTION;");
 	}
 }
 
 struct predStats {
 	int yes_shares, no_shares;
-	double yes_price, no_price;
+	millicredits yes_price, no_price;
 }
 
 struct order {
@@ -247,26 +365,11 @@ struct prediction {
 	string created, closes, settled, result;
 	chance_change[] changes;
 	@disable this();
-	this(int id, Database db) {
-		auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX~"WHERE id = ?;");
-		query.bind(1, id);
-		foreach (row; query.execute()) {
-			this.id = row.peek!int(0);
-			assert (this.id == id);
-			this.statement = row.peek!string(1);
-			this.created = row.peek!string(2);
-			this.creator = row.peek!int(3);
-			this.closes  = row.peek!string(4);
-			this.settled = row.peek!string(5);
-			this.result = row.peek!string(6);
-			break;
-		}
-		loadShares(db);
-	}
-	this(int id, string statement, string created, string closes, string settled, string result, Database db) {
+	this(int id, string statement, string created, int creator, string closes, string settled, string result, Database db) {
 		this.id = id;
 		this.statement = statement;
 		this.created = created;
+		this.creator = creator;
 		this.closes = closes;
 		this.settled = settled;
 		this.result = result;
@@ -310,65 +413,20 @@ struct prediction {
 		return query.execute().oneValue!int;
 	}
 
-	void settle(database db, bool result) {
-		//writeln("settle "~text(this.id)~" as "~text(result));
-		/* mark prediction as settled now */
-		{
-			auto now = Clock.currTime.toUTC.toISOExtString;
-			auto query = db.db.prepare("UPDATE predictions SET settled=?, result=? WHERE id=?;");
-			query.bind(1, now);
-			query.bind(2, result ? "yes" : "no");
-			query.bind(3, this.id);
-			query.execute();
-			this.settled = now;
-		}
-		/* The market maker/creator has to balance the shares,
-		   which means he buys shares until yes==no. */
-		{
-			auto amount = abs(yes_shares - no_shares);
-			if (amount > 0) {
-				auto t = yes_shares < no_shares ? share_type.yes : share_type.no;
-				auto c = db.getUser(creator);
-				db.buy(c, this, amount, t);
-				//writeln("creator buys "~text(amount)~" shares of "~text(t));
-			}
-		}
-		/* payout */
-		{
-			auto query = db.db.prepare("SELECT user, share_count FROM orders WHERE prediction=? AND yes_order=?;");
-			query.bind(1, this.id);
-			query.bind(2, result ? 1 : 2);
-			int[int] shares;
-			foreach (row; query.execute()) {
-				auto userid = row.peek!int(0);
-				auto amount = row.peek!int(1);
-				//writeln("order "~text(amount)~" shares for "~text(userid));
-				auto count = (userid in shares);
-				if (count is null) {
-					shares[userid] = amount;
-				} else {
-					*count  += amount;
-				}
-			}
-			foreach (userid,amount; shares) {
-				//writeln("payout: "~text(amount)~" to "~text(userid));
-				db.giveWealth(userid, amount);
-			}
-		}
-	}
-
 	/* chance that statement happens according to current market */
 	real chance() const pure @safe nothrow {
 		return LMSR_chance(b, yes_shares, no_shares);
 	}
 
 	/* cost of buying a certain amount of shares */
-	real cost(int amount, share_type t) pure const @safe nothrow {
+	millicredits cost(int amount, share_type t) const {
 		if (t == share_type.yes) {
-			return LMSR_cost(b, yes_shares, no_shares, amount);
+			auto c = LMSR_cost(b, yes_shares, no_shares, amount);
+			return millicredits(to!long(1000.0 * c));
 		} else {
 			assert (t == share_type.no);
-			return LMSR_cost(b, no_shares, yes_shares, amount);
+			auto c = LMSR_cost(b, no_shares, yes_shares, amount);
+			return millicredits(to!long(1000.0 * c));
 		}
 	}
 
@@ -389,70 +447,17 @@ string emailPrefix(const(string) email) {
 struct user {
 	int id;
 	string name, email;
-	real wealth;
 	@disable this();
-	this(int id, string name, string email, real wealth) {
-		assert (!isNaN(wealth));
-		assert (wealth >= 0);
+	this(int id, string name, string email) {
 		this.id = id;
 		this.name = name;
 		this.email = email;
-		this.wealth = wealth;
-	}
-	this(int id, Database db) {
-		this.id = id;
-		auto query = db.prepare("SELECT id, name, email, wealth FROM users WHERE id = ?");
-		query.bind(1, id);
-		foreach (row; query.execute()) {
-			assert (id == row.peek!int(0));
-			name = row.peek!string(1);
-			email = row.peek!string(2);
-			wealth = row.peek!double(3);
-		}
-	}
-	this(const(string) email, Database db) {
-		this.email = email;
-		auto query = db.prepare("SELECT id, name, email, wealth FROM users WHERE email = ?");
-		query.bind(1, email);
-		foreach (row; query.execute()) {
-			assert (email == row.peek!string(2));
-			id = row.peek!int(0);
-			name = row.peek!string(1);
-			wealth = row.peek!double(3);
-		}
-		if (wealth != wealth) { // query returned zero rows
-			wealth = 1000;
-			name = emailPrefix(email);
-			auto q = db.prepare("INSERT INTO users VALUES (NULL, ?, ?, ?);");
-			q.bind(1, name);
-			q.bind(2, email);
-			q.bind(3, wealth);
-			q.execute();
-			//writeln("create user in db");
-		}
 	}
 
 	void toString(scope void delegate(const(char)[]) sink) const {
 		sink("user(");
 		sink(email);
 		sink(")");
-	}
-}
-
-unittest {
-	const id = 1;
-	auto db = getMemoryDatabase();
-	auto admin = db.getUser(id);
-	assert (admin.id == id);
-	assert (admin.name == "root");
-	assert (admin.email == "root@localhost");
-	assert (admin.wealth > 0);
-	foreach (u; db.users) {
-		assert (admin.id == u.id);
-		assert (admin.name == u.name);
-		assert (admin.email == u.email);
-		assert (admin.wealth == u.wealth, text(admin.wealth)~" != "~text(u.wealth));
-		break;
 	}
 }
 
@@ -475,7 +480,7 @@ database getMemoryDatabase() {
 }
 
 immutable real b = 100;
-immutable real max_loss = b * log(2);
+immutable max_loss = millicredits(to!long(b * log(2) * 1000.0));
 
 real LMSR_C(real b, real yes, real no) pure nothrow @safe {
 	return b * log(exp(yes/b) + exp(no/b));
