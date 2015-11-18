@@ -32,7 +32,7 @@ block body
 				th settled
 				td
 					time(datetime="#{pred.settled}") #{pred.settled}
-	- if (!closed)
+	- if (!closed && req.session)
 		form(method="POST")
 			- foreach (err; errors)
 				p(class="error") #{err}
