@@ -24,6 +24,7 @@ footer { background-color: #8c9c88; }
 a { color: #000; }
 a:hover { text-decoration: none; }
 
+#price.too_much,
 .error { background-color: #f99; color: #600; border: 1px solid #600; }
 
 p.no_preds,

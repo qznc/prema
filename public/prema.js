@@ -55,6 +55,7 @@
 	function costUpdates() {
 		var share_amount = document.getElementById("share_amount");
 		if (!share_amount) return; // cannot buy shares on this page
+		var cash = parseInt(document.getElementById("cash").innerHTML);
 		var type = document.getElementById("share_type");
 		var yes = parseInt(document.getElementById("yes_shares").innerHTML);
 		var no = parseInt(document.getElementById("no_shares").innerHTML);
@@ -62,12 +63,20 @@
 			var amount = parseInt(share_amount.value);
 			var price = document.getElementById("price");
 			var future_chance = document.getElementById("future_chance");
+			var cost;
 			if (share_type.value == "yes") {
-				price.innerHTML = roundDigits(LMSR_cost(yes,no,amount),2)+"¢";
+				cost = LMSR_cost(yes,no,amount);
 				future_chance.innerHTML = Math.round(LMSR_chance(yes+amount,no)*100)+"%";
 			} else {
-				price.innerHTML = roundDigits(LMSR_cost(no,yes,amount),2)+"¢";
+				cost = LMSR_cost(no,yes,amount);
 				future_chance.innerHTML = Math.round(LMSR_chance(yes,no+amount)*100)+"%";
+			}
+			if (cost > cash) {
+				price.innerHTML = "too much";
+				price.className = "too_much";
+			} else {
+				price.innerHTML = roundDigits(cost,3)+"¢";
+				price.className = "";
 			}
 		}
 		share_amount.onkeyup = doUpdate;

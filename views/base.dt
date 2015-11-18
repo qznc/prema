@@ -35,7 +35,7 @@ html
 				- auto ucash = db.getCash(userid);
 				p
 					| You own
-					span(class="cash") #{ucash}
+					span(id="cash") #{ucash}
 			- auto orders = db.getLastOrders();
 			- if (!orders.empty)
 				p Last Orders

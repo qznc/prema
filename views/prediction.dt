@@ -44,7 +44,7 @@ block body
 					option(value="yes") yes
 					option(value="no") no
 				| for
-				span(class="price", id="price") 0
+				span(id="price") 0
 				br
 				| which changes the chance to
 				span(class="chance", id="future_chance") #{round(pred.chance*100)}%
