@@ -1,7 +1,12 @@
 # Prema Prediction Market
 
-A prediction market web app.
-So far only provides binary futures.
+A [prediction market](https://en.wikipedia.org/wiki/Prediction_market) web app.
+Make predictions and trade on them with play money.
+So far only provides binary markets.
+
+![screenshot](https://raw.githubusercontent.com/qznc/prema/master/screenshot.png)
+
+Prediction markets are also known as predictive markets, information markets, decision markets, idea futures, event derivatives, or virtual markets.
 
 Uses [Mozilla Persona](http://127.0.0.1:8080) for authentification.
 
