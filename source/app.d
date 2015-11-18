@@ -5,7 +5,7 @@ LICENSE: http://www.apache.org/licenses/LICENSE-2.0
 
 import vibe.d;
 import model;
-import std.conv : to;
+import std.conv : to, ConvException;
 
 static immutable host = "127.0.0.1";
 
@@ -150,9 +150,18 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 {
     assert(req.method == HTTPMethod.POST);
     string[] errors;
-    auto amount = to!int(req.form["amount"]);
-    if (amount == 0)
-        errors ~= "Cannot buy zero shares";
+    int amount;
+    try
+    {
+        amount = to!int(req.form["amount"]);
+        if (amount == 0)
+            errors ~= "Cannot buy zero shares";
+    }
+    catch (ConvException)
+    {
+        amount = 0;
+        errors ~= "Wrong format for amount of shares. Must be integer.";
+    }
     auto id = to!int(req.params["predID"]);
     auto db = getDatabase();
     auto pred = db.getPrediction(id);
