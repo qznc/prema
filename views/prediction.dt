@@ -55,8 +55,8 @@ block body
 		- if (closed)
 			- foreach (err; errors)
 				p(class="error") #{err}
-		p
-			form(method="POST", action="/settle")
+		form(method="POST", action="/settle")
+			p(id="settle")
 				input(type="hidden", name="predid", value="#{pred.id}")
 				button(name="settlement", value="true") Settle as True
 				| or

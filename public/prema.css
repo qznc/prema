@@ -56,6 +56,8 @@ article li time { margin-left: 1em; }
 
 .error { padding: .5em 1em; }
 
+#settle { text-align: center; }
+
 p.no_preds,
 footer { text-align: center; }
 
