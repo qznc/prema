@@ -3,7 +3,7 @@
 html, body { font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans", Geneva, Verdana, sans-serif; font-size: 100%; }
 
 h1 { font-size: 2em; line-height: 1.3em; font-weight: normal; }
-#sidebar .cash,
+#cash,
 h2 { font-size: 1.2em; line-height: 1.3em; font-weight: normal; }
 h3 { font-size: 1em; line-height: 1.3em; font-weight: bold; }
 
@@ -64,7 +64,7 @@ footer { text-align: center; }
 footer { padding-bottom: 20em; }
 footer .version { margin-left: 3em; }
 
-#sidebar .cash { display: block; }
+#cash { display: block; }
 
 #sidebar,
 article { float: left; }
