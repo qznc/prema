@@ -5,268 +5,282 @@ LICENSE: http://www.apache.org/licenses/LICENSE-2.0
 
 import vibe.d;
 import model;
-import std.conv: to;
+import std.conv : to;
 
 static immutable host = "127.0.0.1";
 
 shared static this()
 {
-	auto router = new URLRouter;
-	router
-		.get("/", &index)
-		.get("/about", &about)
-		.get("/p/:predID", &prediction)
-		.get("/u/:userID", &show_user)
-		.post("/login", &verifyPersona)
-		.any("/logout", &logout)
-	;
+    auto router = new URLRouter;
+    // dfmt off
+    router
+        .get("/", &index)
+        .get("/about", &about)
+        .get("/p/:predID", &prediction)
+        .get("/u/:userID", &show_user)
+        .post("/login", &verifyPersona)
+        .any("/logout", &logout)
+    ;
+    // dfmt on
 
-	auto fsettings = new HTTPFileServerSettings;
-	fsettings.serverPathPrefix = "/static";
-	router.get("/static/*", serveStaticFiles("./public/", fsettings));
+    auto fsettings = new HTTPFileServerSettings;
+    fsettings.serverPathPrefix = "/static";
+    router.get("/static/*", serveStaticFiles("./public/", fsettings));
 
-	/* protected sites below */
-	router
-		.any("*", &checkLogin)
-		.get("/create", &get_create)
-		.post("/create", &post_create)
-		.post("/settle", &post_settle)
-		.post("/p/:predID", &buy_shares)
-		.post("/u/:userID", &show_user)
-	;
+    /* protected sites below */
+    // dfmt off
+    router
+        .any("*", &checkLogin)
+        .get("/create", &get_create)
+        .post("/create", &post_create)
+        .post("/settle", &post_settle)
+        .post("/p/:predID", &buy_shares)
+        .post("/u/:userID", &show_user)
+    ;
+    // dfmt on
 
-	auto settings = new HTTPServerSettings;
-	settings.port = 8080;
-	settings.bindAddresses = ["141.3.44.16", host];
-	settings.sessionStore = new MemorySessionStore;
-	listenHTTP(settings, router);
+    auto settings = new HTTPServerSettings;
+    settings.port = 8080;
+    settings.bindAddresses = ["141.3.44.16", host];
+    settings.sessionStore = new MemorySessionStore;
+    listenHTTP(settings, router);
 }
 
 void index(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto pageTitle = "Prema Prediction Market";
-	auto db = getDatabase();
-	auto active = db.activePredictions();
-	auto toSettle = db.predictionsToSettle();
-	res.render!("index.dt", pageTitle, active, toSettle, req);
+    auto pageTitle = "Prema Prediction Market";
+    auto db = getDatabase();
+    auto active = db.activePredictions();
+    auto toSettle = db.predictionsToSettle();
+    res.render!("index.dt", pageTitle, active, toSettle, req);
 }
 
-void renderPrediction(
-	model.prediction pred,
-	database db,
-	string[] errors,
-	HTTPServerRequest req, HTTPServerResponse res)
+void renderPrediction(model.prediction pred, database db, string[] errors,
+    HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto now = Clock.currTime;
-	auto creator = db.getUser(pred.creator);
-	string email = "@@";
-	int your_yes_shares = 0;
-	int your_no_shares = 0;
-	predStats predStats;
-	if (req.session) {
-		email = req.session.get!string("userEmail");
-		auto user = db.getUser(email);
-		your_yes_shares = db.countPredShares(pred, user, share_type.yes);
-		your_no_shares = db.countPredShares(pred, user, share_type.no);
-		predStats = db.getUsersPredStats(user.id, pred.id);
-	}
-	bool can_settle = email == creator.email;
-	auto closed = now > SysTime.fromISOExtString(pred.closes);
-	auto settled = pred.settled !is null;
-	auto pred_changes = db.getPredChanges(pred);
-	string pageTitle = pred.statement;
-	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled,
-		pred_changes,
-		can_settle, predStats, your_yes_shares, your_no_shares, errors, req);
+    auto now = Clock.currTime;
+    auto creator = db.getUser(pred.creator);
+    string email = "@@";
+    int your_yes_shares = 0;
+    int your_no_shares = 0;
+    predStats predStats;
+    if (req.session)
+    {
+        email = req.session.get!string("userEmail");
+        auto user = db.getUser(email);
+        your_yes_shares = db.countPredShares(pred, user, share_type.yes);
+        your_no_shares = db.countPredShares(pred, user, share_type.no);
+        predStats = db.getUsersPredStats(user.id, pred.id);
+    }
+    bool can_settle = email == creator.email;
+    auto closed = now > SysTime.fromISOExtString(pred.closes);
+    auto settled = pred.settled !is null;
+    auto pred_changes = db.getPredChanges(pred);
+    string pageTitle = pred.statement;
+    res.render!("prediction.dt", pageTitle, pred, creator, closed, settled,
+        pred_changes, can_settle, predStats, your_yes_shares, your_no_shares, errors,
+        req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto id = to!int(req.params["predID"]);
-	auto db = getDatabase();
-	auto pred = db.getPrediction(id);
-	string[] errors;
-	renderPrediction(pred, db, errors, req, res);
+    auto id = to!int(req.params["predID"]);
+    auto db = getDatabase();
+    auto pred = db.getPrediction(id);
+    string[] errors;
+    renderPrediction(pred, db, errors, req, res);
 }
 
 void get_create(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto time = Clock.currTime.toUTC;
-	auto suggested_end = (time + dur!"days"(7)).toISOExtString;
-	string pageTitle = "Create New Prediction";
-	string[] errors;
-	res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
+    auto time = Clock.currTime.toUTC;
+    auto suggested_end = (time + dur!"days"(7)).toISOExtString;
+    string pageTitle = "Create New Prediction";
+    string[] errors;
+    res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
 }
 
 void post_create(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto db = getDatabase();
-	auto pred = req.form["prediction"];
-	auto end = req.form["end"];
-	string[] errors;
-	if (pred == "")
-		errors ~= "Prediction empty.";
-	if (end == "")
-		errors ~= "End date empty.";
-	SysTime end_parsed;
-	try {
-		/* HTML5 browsers miss the seconds */
-		end_parsed = SysTime.fromISOExtString(end~":00").toUTC;
-	} catch(DateTimeException e) try {
-		/* Firefox provides a text field */
-		end_parsed = SysTime.fromISOExtString(end).toUTC;
-	} catch(DateTimeException e) {
-		errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.118865Z.";
-	}
-	auto now = Clock.currTime.toUTC;
-	if (now > end_parsed) {
-		errors ~= "End date must be in the future.";
-	}
-	if (errors.empty) {
-		auto email = req.session.get!string("userEmail");
-		auto user = db.getUser(email);
-		db.createPrediction(pred,end_parsed,user);
-		res.redirect("/");
-	} else {
-		string pageTitle = "Create New Prediction";
-		auto suggested_end = (now + dur!"days"(7)).toISOExtString;
-		res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
-	}
+    auto db = getDatabase();
+    auto pred = req.form["prediction"];
+    auto end = req.form["end"];
+    string[] errors;
+    if (pred == "")
+        errors ~= "Prediction empty.";
+    if (end == "")
+        errors ~= "End date empty.";
+    SysTime end_parsed;
+    try
+    {
+        /* HTML5 browsers miss the seconds */
+        end_parsed = SysTime.fromISOExtString(end ~ ":00").toUTC;
+    }
+    catch (DateTimeException e)
+        try
+    {
+        /* Firefox provides a text field */
+        end_parsed = SysTime.fromISOExtString(end).toUTC;
+    }
+    catch (DateTimeException e)
+    {
+        errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.118865Z.";
+    }
+    auto now = Clock.currTime.toUTC;
+    if (now > end_parsed)
+    {
+        errors ~= "End date must be in the future.";
+    }
+    if (errors.empty)
+    {
+        auto email = req.session.get!string("userEmail");
+        auto user = db.getUser(email);
+        db.createPrediction(pred, end_parsed, user);
+        res.redirect("/");
+    }
+    else
+    {
+        string pageTitle = "Create New Prediction";
+        auto suggested_end = (now + dur!"days"(7)).toISOExtString;
+        res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
+    }
 }
 
 void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 {
-	assert (req.method == HTTPMethod.POST);
-	string[] errors;
-	auto amount = to!int(req.form["amount"]);
-	if (amount == 0)
-		errors ~= "Cannot buy zero shares";
-	auto id = to!int(req.params["predID"]);
-	auto db = getDatabase();
-	auto pred = db.getPrediction(id);
-	auto email = req.session.get!string("userEmail");
-	auto user = db.getUser(email);
-	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
-	auto count = db.countPredShares(pred, user, type);
-	if (count+amount < 0)
-		errors ~= "You only have "~text(count)~" shares.";
-	auto price = pred.cost(amount,type);
-	auto cash = db.getCash(user.id);
-	if (cash < price)
-		errors ~= "That would have cost "~text(price)~", but you only have "~text(cash)~".";
-	if (errors.empty) {
-		db.buy(user.id, id, amount, type, price);
-		res.redirect(req.path);
-	} else {
-		renderPrediction(pred, db, errors, req, res);
-	}
+    assert(req.method == HTTPMethod.POST);
+    string[] errors;
+    auto amount = to!int(req.form["amount"]);
+    if (amount == 0)
+        errors ~= "Cannot buy zero shares";
+    auto id = to!int(req.params["predID"]);
+    auto db = getDatabase();
+    auto pred = db.getPrediction(id);
+    auto email = req.session.get!string("userEmail");
+    auto user = db.getUser(email);
+    auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
+    auto count = db.countPredShares(pred, user, type);
+    if (count + amount < 0)
+        errors ~= "You only have " ~ text(count) ~ " shares.";
+    auto price = pred.cost(amount, type);
+    auto cash = db.getCash(user.id);
+    if (cash < price)
+        errors ~= "That would have cost " ~ text(price) ~ ", but you only have " ~ text(cash) ~ ".";
+    if (errors.empty)
+    {
+        db.buy(user.id, id, amount, type, price);
+        res.redirect(req.path);
+    }
+    else
+    {
+        renderPrediction(pred, db, errors, req, res);
+    }
 }
 
 void post_settle(HTTPServerRequest req, HTTPServerResponse res)
 {
-	assert (req.method == HTTPMethod.POST);
-	assert (req.session);
-	auto id = to!int(req.form["predid"]);
-	auto db = getDatabase();
-	auto pred = db.getPrediction(id);
-	auto email = req.session.get!string("userEmail");
-	auto user = db.getUser(email);
-	enforceHTTP(user.id == pred.creator,
-		HTTPStatus.badRequest, "only creator can settle");
-	auto result = req.form["settlement"] == "true";
-	db.settle(pred.id, result);
-	res.redirect("/p/"~text(pred.id));
+    assert(req.method == HTTPMethod.POST);
+    assert(req.session);
+    auto id = to!int(req.form["predid"]);
+    auto db = getDatabase();
+    auto pred = db.getPrediction(id);
+    auto email = req.session.get!string("userEmail");
+    auto user = db.getUser(email);
+    enforceHTTP(user.id == pred.creator, HTTPStatus.badRequest, "only creator can settle");
+    auto result = req.form["settlement"] == "true";
+    db.settle(pred.id, result);
+    res.redirect("/p/" ~ text(pred.id));
 }
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto id = to!int(req.params["userID"]);
-	auto db = getDatabase();
-	auto user = db.getUser(id);
-	if (req.method == HTTPMethod.POST) {
-		enforceHTTP(req.session,
-			HTTPStatus.badRequest, "must be logged in to change name");
-		auto email = req.session.get!string("userEmail");
-		enforceHTTP(email == user.email,
-			HTTPStatus.badRequest, "you can only change your own name");
-		auto new_name = req.form["new_name"];
-		db.setUserName(id, new_name);
-	}
-	string pageTitle = user.name;
-	auto cash = db.getCash(id);
-	auto predsActive = db.usersActivePredictions(id);
-	auto predsClosed = db.usersClosedPredictions(id);
-	res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
+    auto id = to!int(req.params["userID"]);
+    auto db = getDatabase();
+    auto user = db.getUser(id);
+    if (req.method == HTTPMethod.POST)
+    {
+        enforceHTTP(req.session, HTTPStatus.badRequest, "must be logged in to change name");
+        auto email = req.session.get!string("userEmail");
+        enforceHTTP(email == user.email, HTTPStatus.badRequest,
+            "you can only change your own name");
+        auto new_name = req.form["new_name"];
+        db.setUserName(id, new_name);
+    }
+    string pageTitle = user.name;
+    auto cash = db.getCash(id);
+    auto predsActive = db.usersActivePredictions(id);
+    auto predsClosed = db.usersClosedPredictions(id);
+    res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
 }
 
 void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 {
-	enforceHTTP("assertion" in req.form,
-			HTTPStatus.badRequest, "Missing assertion field.");
-	const ass = req.form["assertion"];
-	const audience = "http://"~(req.host)~":8080/";
-	if (req.session) {
-		logInfo("session already started for "~req.session.get!string("userEmail"));
-		return;
-	}
-	logInfo("verifyPersona");
+    enforceHTTP("assertion" in req.form, HTTPStatus.badRequest, "Missing assertion field.");
+    const ass = req.form["assertion"];
+    const audience = "http://" ~ (req.host) ~ ":8080/";
+    if (req.session)
+    {
+        logInfo("session already started for " ~ req.session.get!string("userEmail"));
+        return;
+    }
+    logInfo("verifyPersona");
 
-	requestHTTP("https://verifier.login.persona.org/verify",
-		(scope req) {
-			req.method = HTTPMethod.POST;
-			req.contentType = "application/x-www-form-urlencoded";
-			auto bdy = "assertion="~ass~"&audience="~audience;
-			req.bodyWriter.write(bdy);
-		},
-		(scope res2) {
-			auto answer = res2.readJson();
-			enforceHTTP(answer["status"] == "okay",
-				HTTPStatus.badRequest, "Verification failed.");
-			enforceHTTP(answer["audience"] == audience,
-				HTTPStatus.badRequest, "Verification failed.");
-			string expires = answer["expires"].to!string;
-			string issuer = answer["issuer"].to!string;
-			string email = answer["email"].to!string;
-			logInfo("start session for "~email);
-			auto session = res.startSession();
-			session.set("userEmail", email);
-			session.set("persona_expires", expires);
-			session.set("persona_issuer", issuer);
-			auto db = getDatabase();
-			auto user = db.getUser(email);
-			session.set("userId", user.id);
-			session.set("userName", user.name);
-			logInfo("Successfully logged in "~text(user.name));
-		});
-	res.bodyWriter.write("ok");
+    requestHTTP("https://verifier.login.persona.org/verify", (scope req) {
+        req.method = HTTPMethod.POST;
+        req.contentType = "application/x-www-form-urlencoded";
+        auto bdy = "assertion=" ~ ass ~ "&audience=" ~ audience;
+        req.bodyWriter.write(bdy);
+    }, (scope res2) {
+        auto answer = res2.readJson();
+        enforceHTTP(answer["status"] == "okay", HTTPStatus.badRequest, "Verification failed.");
+        enforceHTTP(answer["audience"] == audience, HTTPStatus.badRequest, "Verification failed.");
+        string expires = answer["expires"].to!string;
+        string issuer = answer["issuer"].to!string;
+        string email = answer["email"].to!string;
+        logInfo("start session for " ~ email);
+        auto session = res.startSession();
+        session.set("userEmail", email);
+        session.set("persona_expires", expires);
+        session.set("persona_issuer", issuer);
+        auto db = getDatabase();
+        auto user = db.getUser(email);
+        session.set("userId", user.id);
+        session.set("userName", user.name);
+        logInfo("Successfully logged in " ~ text(user.name));
+    });
+    res.bodyWriter.write("ok");
 }
 
 void logout(HTTPServerRequest req, HTTPServerResponse res)
 {
-	if (req.session) {
-		logInfo("logout: terminate session for "~req.session.get!string("userEmail"));
-		res.terminateSession();
-		res.redirect("/");
-	} else {
-		res.statusCode = HTTPStatus.badRequest;
-		res.bodyWriter.write("nothing to logout");
-	}
+    if (req.session)
+    {
+        logInfo("logout: terminate session for " ~ req.session.get!string("userEmail"));
+        res.terminateSession();
+        res.redirect("/");
+    }
+    else
+    {
+        res.statusCode = HTTPStatus.badRequest;
+        res.bodyWriter.write("nothing to logout");
+    }
 }
 
 void checkLogin(HTTPServerRequest req, HTTPServerResponse res)
 {
-	if (req.session) return;
-	/* not authenticated! */
-	logInfo("checkLogin failed: "~req.path);
-	auto pageTitle = "Authentication Error";
-	res.statusCode = HTTPStatus.forbidden;
-	res.bodyWriter.write(pageTitle);
+    if (req.session)
+        return;
+    /* not authenticated! */
+    logInfo("checkLogin failed: " ~ req.path);
+    auto pageTitle = "Authentication Error";
+    res.statusCode = HTTPStatus.forbidden;
+    res.bodyWriter.write(pageTitle);
 }
 
 void about(HTTPServerRequest req, HTTPServerResponse res)
 {
-	auto pageTitle = "About Prema Prediction Market";
-	auto text = vibe.textfilter.markdown.filterMarkdown("
+    auto pageTitle = "About Prema Prediction Market";
+    auto text = vibe.textfilter.markdown.filterMarkdown("
 Prema implements a [prediction market](https://en.wikipedia.org/wiki/Prediction_market).
 People input predictions and then buy and sell shares on them,
 similar to a stock market.
@@ -324,6 +338,7 @@ prediction markets encourage insider trading.
 If you know more about certain predictions,
 you can profit from this knowledge.
 In return, the public gets a more accurate forecast.
-	", MarkdownFlags.none);
-	res.render!("plain.dt", pageTitle, text, req);
+	",
+        MarkdownFlags.none);
+    res.render!("plain.dt", pageTitle, text, req);
 }
