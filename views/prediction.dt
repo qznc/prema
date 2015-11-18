@@ -99,7 +99,7 @@ block body
 		  chart.draw(data, options);
 		}
 	table(id="raw_history")
-		- foreach (change; pred.changes)
+		- foreach (change; pred_changes)
 			tr
 				th
 					time(datetime="#{change.date}") #{change.date}

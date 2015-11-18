@@ -58,7 +58,7 @@ void renderPrediction(
 	HTTPServerRequest req, HTTPServerResponse res)
 {
 	auto now = Clock.currTime;
-	auto creator = pred.getCreator(db);
+	auto creator = db.getUser(pred.creator);
 	string email = "@@";
 	int your_yes_shares = 0;
 	int your_no_shares = 0;
@@ -66,15 +66,17 @@ void renderPrediction(
 	if (req.session) {
 		email = req.session.get!string("userEmail");
 		auto user = db.getUser(email);
-		your_yes_shares = pred.countShares(db, user, share_type.yes);
-		your_no_shares = pred.countShares(db, user, share_type.no);
+		your_yes_shares = db.countPredShares(pred, user, share_type.yes);
+		your_no_shares = db.countPredShares(pred, user, share_type.no);
 		predStats = db.getUsersPredStats(user.id, pred.id);
 	}
 	bool can_settle = email == creator.email;
 	auto closed = now > SysTime.fromISOExtString(pred.closes);
 	auto settled = pred.settled !is null;
+	auto pred_changes = db.getPredChanges(pred);
 	string pageTitle = pred.statement;
 	res.render!("prediction.dt", pageTitle, pred, creator, closed, settled,
+		pred_changes,
 		can_settle, predStats, your_yes_shares, your_no_shares, errors, req);
 }
 
@@ -145,7 +147,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
 	auto email = req.session.get!string("userEmail");
 	auto user = db.getUser(email);
 	auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
-	auto count = pred.countShares(db, user, type);
+	auto count = db.countPredShares(pred, user, type);
 	if (count+amount < 0)
 		errors ~= "You only have "~text(count)~" shares.";
 	auto price = pred.cost(amount,type);

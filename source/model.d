@@ -158,15 +158,17 @@ struct database {
 		return ret;
 	}
 
-	private auto parsePredictionQueryRow(T)(T row) {
-		auto i = row.peek!int(0);
-		auto s = row.peek!string(1);
+	private auto parsePredictionQueryRow(Row row) {
+		auto id = row.peek!int(0);
+		auto statement = row.peek!string(1);
 		auto created = row.peek!string(2);
 		auto creator = row.peek!int(3);
 		auto closes  = row.peek!string(4);
 		auto settled = row.peek!string(5);
 		auto result = row.peek!string(6);
-		return prediction(i,s,created,creator,closes,settled,result,db);
+		auto yes_shares = countPredShares(id, share_type.yes);
+		auto no_shares = countPredShares(id, share_type.no);
+		return prediction(id,statement,creator,yes_shares,no_shares,created,closes,settled,result);
 	}
 
 	prediction[] activePredictions() {
@@ -340,6 +342,50 @@ struct database {
 		}
 		db.execute("END TRANSACTION;");
 	}
+
+	chance_change[] getPredChanges(prediction pred) {
+		chance_change[] changes;
+		changes ~= chance_change(pred.created,0.5,0,share_type.balance);
+		auto query = db.prepare("SELECT share_count, yes_order, date FROM orders WHERE prediction=? ORDER BY date;");
+		query.bind(1, pred.id);
+		foreach (row; query.execute()) {
+			auto amount = row.peek!int(0);
+			auto y = row.peek!int(1);
+			share_type type;
+			auto date = row.peek!string(2);
+			if (y == 1) {
+				type = share_type.yes;
+			} else {
+				assert (y == 2);
+				type = share_type.no;
+			}
+			changes ~= chance_change(date,pred.chance,amount,type);
+		}
+		if (pred.settled != "") {
+			/* last element is the balancing of the creator during settlement */
+			changes.length -= 1;
+		}
+		return changes;
+	}
+
+	private int countPredShares(prediction pred, share_type t) {
+		return countPredShares(pred.id, t);
+	}
+
+	private int countPredShares(int predid, share_type t) {
+		auto query = db.prepare("SELECT SUM(share_count), yes_order FROM orders WHERE prediction=? AND yes_order=? ORDER BY date;");
+		query.bind(1, predid);
+		query.bind(2, t);
+		return query.execute().oneValue!int();
+	}
+
+	int countPredShares(prediction pred, user u, share_type t) {
+		auto query = db.prepare("SELECT SUM(share_count) FROM orders WHERE prediction=? AND user=? AND yes_order=?;");
+		query.bind(1, pred.id);
+		query.bind(2, u.id);
+		query.bind(3, t);
+		return query.execute().oneValue!int;
+	}
 }
 
 struct predStats {
@@ -365,55 +411,6 @@ struct prediction {
 	string statement;
 	int creator, yes_shares, no_shares;
 	string created, closes, settled, result;
-	chance_change[] changes;
-	@disable this();
-	this(int id, string statement, string created, int creator, string closes, string settled, string result, Database db) {
-		this.id = id;
-		this.statement = statement;
-		this.created = created;
-		this.creator = creator;
-		this.closes = closes;
-		this.settled = settled;
-		this.result = result;
-		loadShares(db);
-	}
-
-	user getCreator(database db) {
-		return db.getUser(this.creator);
-	}
-
-	private void loadShares(Database db) {
-		changes ~= chance_change(created,0.5,0,share_type.balance);
-		auto query = db.prepare("SELECT share_count, yes_order, date FROM orders WHERE prediction = ? ORDER BY date;");
-		query.bind(1, id);
-		foreach (row; query.execute()) {
-			auto amount = row.peek!int(0);
-			auto y = row.peek!int(1);
-			share_type type;
-			auto date = row.peek!string(2);
-			if (y == 1) {
-				yes_shares += amount;
-				type = share_type.yes;
-			} else {
-				assert (y == 2);
-				no_shares += amount;
-				type = share_type.no;
-			}
-			changes ~= chance_change(date,this.chance,amount,type);
-		}
-		if (this.settled != "") {
-			/* last element is the balancing of the creator during settlement */
-			changes.length -= 1;
-		}
-	}
-
-	int countShares(database db, user u, share_type t) {
-		auto query = db.db.prepare("SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
-		query.bind(1, this.id);
-		query.bind(2, u.id);
-		query.bind(3, t);
-		return query.execute().oneValue!int;
-	}
 
 	/* chance that statement happens according to current market */
 	real chance() const pure @safe nothrow {
@@ -469,8 +466,6 @@ database getDatabase() {
 	auto db = database(path);
 	if (init) {
 		init_empty_db(db.db);
-		//auto user = db.getUser(1);
-		//db.createPrediction("This app will actually be used.", "2016-02-02T05:45:55+00:00", user);
 	}
 	return db;
 }
