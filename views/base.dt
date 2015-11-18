@@ -1,6 +1,7 @@
 - import std.math : round;
 - import git_version : VER;
 - import model : getDatabase;
+- auto db = getDatabase();
 doctype html
 html
 	head
@@ -29,11 +30,17 @@ html
 			block body
 
 		div(id="sidebar")
-			- auto orders = getDatabase().getLastOrders();
+			- if (req.session)
+				- auto userid = req.session.get!int("userId");
+				- auto ucash = db.getCash(userid);
+				p
+					| You own
+					span(class="cash") #{ucash}
+			- auto orders = db.getLastOrders();
 			- if (!orders.empty)
 				p Last Orders
 				table
-					- foreach(order; getDatabase().getLastOrders())
+					- foreach(order; db.getLastOrders())
 						tr
 							td
 								a(href="/p/#{order.predid}") p/#{order.predid}
