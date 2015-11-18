@@ -408,6 +408,7 @@ struct database
         auto query = db.prepare(
             "SELECT share_count, yes_order, date FROM orders WHERE prediction=? ORDER BY date;");
         query.bind(1, pred.id);
+        int yes_shares, no_shares;
         foreach (row; query.execute())
         {
             auto amount = row.peek!int(0);
@@ -417,13 +418,16 @@ struct database
             if (y == 1)
             {
                 type = share_type.yes;
+                yes_shares += amount;
             }
             else
             {
                 assert(y == 2);
                 type = share_type.no;
+                no_shares += amount;
             }
-            changes ~= chance_change(date, pred.chance, amount, type);
+            auto chance = LMSR_chance(b, yes_shares, no_shares);
+            changes ~= chance_change(date, chance, amount, type);
         }
         if (pred.settled != "")
         {
