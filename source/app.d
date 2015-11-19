@@ -8,6 +8,7 @@ import model;
 import std.conv : to, ConvException;
 
 static immutable host = "127.0.0.1";
+static immutable port = 8081;
 
 shared static this()
 {
@@ -40,7 +41,7 @@ shared static this()
     // dfmt on
 
     auto settings = new HTTPServerSettings;
-    settings.port = 8080;
+    settings.port = port;
     settings.bindAddresses = ["141.3.44.16", host];
     settings.sessionStore = new MemorySessionStore;
     listenHTTP(settings, router);
@@ -226,7 +227,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 {
     enforceHTTP("assertion" in req.form, HTTPStatus.badRequest, "Missing assertion field.");
     const ass = req.form["assertion"];
-    const audience = "http://" ~ (req.host) ~ ":8080/";
+    const audience = "http://" ~ (req.host) ~ ":"~text(port)~"/";
     if (req.session)
     {
         logInfo("session already started for " ~ req.session.get!string("userEmail"));

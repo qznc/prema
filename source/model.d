@@ -131,7 +131,6 @@ struct database
     {
         auto query = db.prepare("SELECT id, name FROM users WHERE email = ?");
         query.bind(1, email);
-        bool exists = false;
         foreach (row; query.execute())
         {
             auto id = row.peek!int(0);
