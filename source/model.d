@@ -216,7 +216,7 @@ struct database
     prediction[] activePredictions()
     {
         SysTime now = Clock.currTime.toUTC;
-        auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX ~ "WHERE closes > ? ORDER BY closes;");
+        auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX ~ "WHERE closes > ? AND settled IS NULL ORDER BY closes;");
         query.bind(1, now.toISOExtString());
         return parsePredictionQuery(query.execute());
     }
