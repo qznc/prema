@@ -50,6 +50,13 @@ struct millicredits
             return 0;
     }
 
+    millicredits opBinary(string op)(ref const millicredits rhs) const
+    {
+        static if (op == "+") return millicredits(amount + rhs.amount);
+        else static if (op == "-") return millicredits(amount - rhs.amount);
+        else static assert(0, "Operator "~op~" not implemented");
+    }
+
     void toString(scope void delegate(const(char)[]) sink) const
     {
         sink.formattedWrite("%.3f", amount / 1000.0);
@@ -221,6 +228,7 @@ struct database
     void createPrediction(string stmt, SysTime closes, user creator)
     {
         SysTime now = Clock.currTime.toUTC;
+        db.execute("BEGIN TRANSACTION;");
         enforce(closes > now, "closes date must be in the future");
         auto q = db.prepare("INSERT INTO predictions (id,statement,created,creator,closes,settled,result) VALUES (NULL, ?, ?, ?, ?, NULL, NULL);");
         q.bind(1, stmt);
@@ -228,6 +236,14 @@ struct database
         q.bind(3, creator.id);
         q.bind(4, closes.toUTC.toISOExtString);
         q.execute();
+        /* get id */
+        q = db.prepare("SELECT id FROM predictions WHERE statement=? AND created=?;");
+        q.bind(1, stmt);
+        q.bind(2, now.toISOExtString());
+        auto pid = q.execute().oneValue!int;
+        /* prepay the settlement tax */
+        transferMoney(creator.id, MARKETS_ID, max_loss, pid, share_type.init);
+        db.execute("END TRANSACTION;");
     }
 
     void buy(int uid, int pid, int amount, share_type t, millicredits price)
@@ -371,15 +387,18 @@ struct database
             query.execute();
         }
         /* The market maker/creator has to balance the shares,
-		   which means he buys shares until yes==no. */
+           which means to balance shares such that yes==no. */
         {
             auto amount = abs(pred.yes_shares - pred.no_shares);
             if (amount > 0)
             {
                 auto t = pred.yes_shares < pred.no_shares ? share_type.yes : share_type.no;
                 auto price = pred.cost(amount, t);
-                buyWithoutTransaction(pred.creator, pred.id, amount, t, price);
-                //writeln("creator buys "~text(amount)~" shares of "~text(t));
+                transferShares(pred.creator, pred.id, amount, t);
+                /* due to prepay, creator gets some money back */
+                auto payback = max_loss - price;
+                if (payback != credits(0))
+                    transferMoney(MARKETS_ID, pred.creator, payback, pred.id, share_type.balance);
             }
         }
         /* payout */

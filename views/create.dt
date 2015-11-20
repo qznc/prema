@@ -12,7 +12,8 @@ block body
 			| .
 		p
 			button Create
-		p Settlement might cost up to #{max_loss}. Some advice for predictions:
+		p You pay #{max_loss} up front for creating this prediction. Upon settlement you might get some of the back. The more wrong the market is, the more you get back.
+		p Some advice for predictions:
 		ul
 			li Predictions start at 50%. Try to design them accordingly.
 			li If 50% does not match your belief, trade immediately after creation.
