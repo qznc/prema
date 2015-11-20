@@ -10,9 +10,15 @@ block body
 			| and we can trade it until
 			input(type="datetime-local", value="#{suggested_end}", name="end", size="28")
 			| .
+		p Market depth:
+			input(type="range", min=10, max=200, id="b", name="b", value=50)
+			span(id="b_txt")
+			|= " which means max tax = "
+			span(id="max_loss") 69.314¢
+			|= "."
 		p
 			button Create
-		p You pay #{max_loss} up front for creating this prediction. Upon settlement you might get some of the back. The more wrong the market is, the more you get back.
+		p You pay tax up front for creating this prediction. Upon settlement you might get some of the tax back. The more wrong the market is, the more you get back. It might even by a net win, if the market is on the wrong side of 50%.loss
 		p Some advice for predictions:
 		ul
 			li Predictions start at 50%. Try to design them accordingly.

@@ -52,9 +52,12 @@ struct millicredits
 
     millicredits opBinary(string op)(ref const millicredits rhs) const
     {
-        static if (op == "+") return millicredits(amount + rhs.amount);
-        else static if (op == "-") return millicredits(amount - rhs.amount);
-        else static assert(0, "Operator "~op~" not implemented");
+        static if (op == "+")
+            return millicredits(amount + rhs.amount);
+        else static if (op == "-")
+            return millicredits(amount - rhs.amount);
+        else
+            static assert(0, "Operator " ~ op ~ " not implemented");
     }
 
     void toString(scope void delegate(const(char)[]) sink) const
@@ -83,6 +86,7 @@ void init_empty_db(Database db)
     db.execute("INSERT INTO users VALUES (" ~ text(FUNDER_ID) ~ ", 'funder', 'funder');");
     db.execute("CREATE TABLE predictions (
 		id INTEGER PRIMARY KEY,
+		b INTEGER, /* b factor for LMSR */
 		statement TEXT NOT NULL,
 		created TEXT NOT NULL, /* ISO8601 date */
 		creator INTEGER, /* id from users */
@@ -109,7 +113,7 @@ void init_empty_db(Database db)
 		);");
 }
 
-immutable SQL_SELECT_PREDICTION_PREFIX = "SELECT id,statement,created,creator,closes,settled,result FROM predictions ";
+immutable SQL_SELECT_PREDICTION_PREFIX = "SELECT id,b,statement,created,creator,closes,settled,result FROM predictions ";
 
 struct database
 {
@@ -196,15 +200,16 @@ struct database
     private auto parsePredictionQueryRow(Row row)
     {
         auto id = row.peek!int(0);
-        auto statement = row.peek!string(1);
-        auto created = row.peek!string(2);
-        auto creator = row.peek!int(3);
-        auto closes = row.peek!string(4);
-        auto settled = row.peek!string(5);
-        auto result = row.peek!string(6);
+        auto b = row.peek!int(1);
+        auto statement = row.peek!string(2);
+        auto created = row.peek!string(3);
+        auto creator = row.peek!int(4);
+        auto closes = row.peek!string(5);
+        auto settled = row.peek!string(6);
+        auto result = row.peek!string(7);
         auto yes_shares = countPredShares(id, share_type.yes);
         auto no_shares = countPredShares(id, share_type.no);
-        return prediction(id, statement, creator, yes_shares, no_shares,
+        return prediction(id, b, statement, creator, yes_shares, no_shares,
             created, closes, settled, result);
     }
 
@@ -225,16 +230,17 @@ struct database
         return parsePredictionQuery(query.execute());
     }
 
-    void createPrediction(string stmt, SysTime closes, user creator)
+    void createPrediction(int b, string stmt, SysTime closes, user creator)
     {
         SysTime now = Clock.currTime.toUTC;
         db.execute("BEGIN TRANSACTION;");
         enforce(closes > now, "closes date must be in the future");
-        auto q = db.prepare("INSERT INTO predictions (id,statement,created,creator,closes,settled,result) VALUES (NULL, ?, ?, ?, ?, NULL, NULL);");
-        q.bind(1, stmt);
-        q.bind(2, now.toISOExtString());
-        q.bind(3, creator.id);
-        q.bind(4, closes.toUTC.toISOExtString);
+        auto q = db.prepare("INSERT INTO predictions (id,b,statement,created,creator,closes,settled,result) VALUES (NULL, ?, ?, ?, ?, ?, NULL, NULL);");
+        q.bind(1, b);
+        q.bind(2, stmt);
+        q.bind(3, now.toISOExtString());
+        q.bind(4, creator.id);
+        q.bind(5, closes.toUTC.toISOExtString);
         q.execute();
         /* get id */
         q = db.prepare("SELECT id FROM predictions WHERE statement=? AND created=?;");
@@ -242,6 +248,7 @@ struct database
         q.bind(2, now.toISOExtString());
         auto pid = q.execute().oneValue!int;
         /* prepay the settlement tax */
+        auto max_loss = credits(b * log(2));
         transferMoney(creator.id, MARKETS_ID, max_loss, pid, share_type.init);
         db.execute("END TRANSACTION;");
     }
@@ -396,6 +403,7 @@ struct database
                 auto price = pred.cost(amount, t);
                 transferShares(pred.creator, pred.id, amount, t);
                 /* due to prepay, creator gets some money back */
+                auto max_loss = credits(pred.b * log(2));
                 auto payback = max_loss - price;
                 if (payback != credits(0))
                     transferMoney(MARKETS_ID, pred.creator, payback, pred.id, share_type.balance);
@@ -444,7 +452,7 @@ struct database
                 type = share_type.no;
                 no_shares += amount;
             }
-            auto chance = LMSR_chance(b, yes_shares, no_shares);
+            auto chance = LMSR_chance(pred.b, yes_shares, no_shares);
             changes ~= chance_change(date, chance, amount, type);
         }
         if (pred.settled != "")
@@ -503,7 +511,7 @@ struct chance_change
 
 struct prediction
 {
-    int id;
+    int id, b;
     string statement;
     int creator, yes_shares, no_shares;
     string created, closes, settled, result;
@@ -584,9 +592,6 @@ database getMemoryDatabase()
     init_empty_db(db.db);
     return db;
 }
-
-immutable real b = 100;
-immutable max_loss = credits(b * log(2));
 
 real LMSR_C(real b, real yes, real no) pure nothrow @safe
 {

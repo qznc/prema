@@ -36,16 +36,15 @@
 			tt.innerHTML = relDate(new Date(date));
 		}
 	}
-	var b = 100.0; // NOTE must match source/model.d
-	function LMSR_C(yes, no) {
+	function LMSR_C(b, yes, no) {
 		return b * Math.log(Math.exp(yes/b) + Math.exp(no/b));
 	}
-	function LMSR_cost(yes, no, amount) {
-		return LMSR_C(yes+amount, no) - LMSR_C(yes, no);
+	function LMSR_cost(b, yes, no, amount) {
+		return LMSR_C(b, yes+amount, no) - LMSR_C(b, yes, no);
 	}
-	function LMSR_chance(yes, no) {
-		var y =  LMSR_cost(yes, no, 1);
-		var n =  LMSR_cost(no, yes, 1);
+	function LMSR_chance(b, yes, no) {
+		var y =  LMSR_cost(b, yes, no, 1);
+		var n =  LMSR_cost(b, no, yes, 1);
 		return y / (y+n);
 	}
 	function roundDigits(value,digits) {
@@ -59,17 +58,18 @@
 		var type = document.getElementById("share_type");
 		var yes = parseInt(document.getElementById("yes_shares").innerHTML);
 		var no = parseInt(document.getElementById("no_shares").innerHTML);
+		var b = parseInt(document.getElementById("b").innerHTML);
 		function doUpdate() {
 			var amount = parseInt(share_amount.value);
 			var price = document.getElementById("price");
 			var future_chance = document.getElementById("future_chance");
 			var cost;
 			if (share_type.value == "yes") {
-				cost = LMSR_cost(yes,no,amount);
-				future_chance.innerHTML = Math.round(LMSR_chance(yes+amount,no)*100)+"%";
+				cost = LMSR_cost(b,yes,no,amount);
+				future_chance.innerHTML = Math.round(LMSR_chance(b,yes+amount,no)*100)+"%";
 			} else {
-				cost = LMSR_cost(no,yes,amount);
-				future_chance.innerHTML = Math.round(LMSR_chance(yes,no+amount)*100)+"%";
+				cost = LMSR_cost(b,no,yes,amount);
+				future_chance.innerHTML = Math.round(LMSR_chance(b,yes,no+amount)*100)+"%";
 			}
 			if (cost > cash) {
 				price.innerHTML = "too much";
@@ -84,6 +84,23 @@
 		type.onchange = doUpdate;
 		doUpdate(); // once initially
 	}
+	function createCostUpdates() {
+		var b = document.getElementById("b");
+		if (!b) return; // cannot create predictions on this page
+		var max_loss = document.getElementById("max_loss");
+		var b_txt = document.getElementById("b_txt");
+		function doUpdate() {
+			var amount = parseInt(b.value);
+			b_txt.innerHTML = b.value;
+			var price = amount * Math.log(2);
+			max_loss.innerHTML = roundDigits(price,3)+"¢";
+		}
+		b.onkeyup = doUpdate;
+		b.onmouseup = doUpdate;
+		b.onchange = doUpdate;
+		doUpdate(); // once initially
+	}
 	showRelativeTimes();
 	costUpdates();
+	createCostUpdates();
 })();

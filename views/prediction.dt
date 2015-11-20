@@ -23,6 +23,7 @@ block body
 				time(datetime="#{pred.created}") #{pred.created}
 				| by
 				a(href="/u/#{creator.id}") #{creator.name}
+				| with b=<span id="b">#{pred.b}</span>.
 		tr
 			th closes
 			td

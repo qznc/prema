@@ -98,7 +98,7 @@ void get_create(HTTPServerRequest req, HTTPServerResponse res)
     auto suggested_end = (time + dur!"days"(7)).toISOExtString;
     string pageTitle = "Create New Prediction";
     string[] errors;
-    res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
+    res.render!("create.dt", pageTitle, suggested_end, errors, req);
 }
 
 void post_create(HTTPServerRequest req, HTTPServerResponse res)
@@ -106,11 +106,25 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
     auto db = getDatabase();
     auto pred = req.form["prediction"];
     auto end = req.form["end"];
+    auto b = req.form["b"];
     string[] errors;
     if (pred == "")
         errors ~= "Prediction empty.";
     if (end == "")
         errors ~= "End date empty.";
+    int b_parsed;
+    try
+    {
+        b_parsed = b.to!int;
+    }
+    catch (ConvException e)
+    {
+        errors ~= "Parameter b has wrong format.";
+    }
+    if (b_parsed < 10)
+        errors ~= "Parameter b must be at least 10.";
+    if (b_parsed > 200)
+        errors ~= "Parameter b must be at most 200.";
     SysTime end_parsed;
     try
     {
@@ -118,14 +132,16 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
         end_parsed = SysTime.fromISOExtString(end ~ ":00").toUTC;
     }
     catch (DateTimeException e)
+    {
         try
-    {
-        /* Firefox provides a text field */
-        end_parsed = SysTime.fromISOExtString(end).toUTC;
-    }
-    catch (DateTimeException e)
-    {
-        errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.118865Z.";
+        {
+            /* Firefox provides a text field */
+            end_parsed = SysTime.fromISOExtString(end).toUTC;
+        }
+        catch (DateTimeException e)
+        {
+            errors ~= "End date in wrong format. Should be like 2015-11-20T19:23:34.118865Z.";
+        }
     }
     auto now = Clock.currTime.toUTC;
     if (now > end_parsed)
@@ -136,14 +152,14 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
     {
         auto email = req.session.get!string("userEmail");
         auto user = db.getUser(email);
-        db.createPrediction(pred, end_parsed, user);
+        db.createPrediction(b_parsed, pred, end_parsed, user);
         res.redirect("/");
     }
     else
     {
         string pageTitle = "Create New Prediction";
         auto suggested_end = (now + dur!"days"(7)).toISOExtString;
-        res.render!("create.dt", pageTitle, suggested_end, errors, max_loss, req);
+        res.render!("create.dt", pageTitle, suggested_end, errors, req);
     }
 }
 
@@ -227,7 +243,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 {
     enforceHTTP("assertion" in req.form, HTTPStatus.badRequest, "Missing assertion field.");
     const ass = req.form["assertion"];
-    const audience = "http://" ~ (req.host) ~ ":"~text(port)~"/";
+    const audience = "http://" ~ (req.host) ~ ":" ~ text(port) ~ "/";
     if (req.session)
     {
         logInfo("session already started for " ~ req.session.get!string("userEmail"));
