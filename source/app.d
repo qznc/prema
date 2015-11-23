@@ -17,6 +17,7 @@ shared static this()
     router
         .get("/", &index)
         .get("/about", &about)
+        .get("/highscores", &highscores)
         .get("/p/:predID", &prediction)
         .get("/u/:userID", &show_user)
         .post("/login", &verifyPersona)
@@ -90,6 +91,13 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
     auto pred = db.getPrediction(id);
     string[] errors;
     renderPrediction(pred, db, errors, req, res);
+}
+
+void highscores(HTTPServerRequest req, HTTPServerResponse res)
+{
+    string pageTitle = "Highscores";
+    auto db = getDatabase();
+    res.render!("highscores.dt", pageTitle, req);
 }
 
 void get_create(HTTPServerRequest req, HTTPServerResponse res)

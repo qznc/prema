@@ -1,7 +1,7 @@
 /** Data Model and Persistence **/
 
 import d2sqlite3;
-import std.algorithm : findSplitBefore;
+import std.algorithm : findSplitBefore, sort;
 import std.stdio : writeln;
 import std.math : log, exp, isNaN, abs;
 import std.conv : text, to;
@@ -173,11 +173,14 @@ struct database
         throw new Exception("Prediction " ~ text(id) ~ " does not exist.");
     }
 
-    user[] users()
+    private user[] users()
     {
-        auto query = db.execute("SELECT id,name,email FROM users ORDER BY id;");
+        auto query = db.prepare(
+            "SELECT id,name,email FROM users WHERE id != ? AND id != ? ORDER BY id;");
+        query.bind(1, MARKETS_ID);
+        query.bind(2, FUNDER_ID);
         user[] result;
-        foreach (row; query)
+        foreach (row; query.execute())
         {
             auto id = row.peek!int(0);
             auto name = row.peek!string(1);
@@ -185,6 +188,44 @@ struct database
             result ~= user(id, name, email);
         }
         return result;
+    }
+
+    auto getUsersByCash()
+    {
+        auto us = users();
+        bool myComp(user x, user y)
+        {
+            auto cx = getCash(x.id);
+            auto cy = getCash(y.id);
+            return cx > cy;
+        }
+
+        sort!(myComp)(us);
+        return us;
+    }
+
+    auto getUsersByClosedPredictions()
+    {
+        auto us = users();
+        bool myComp(user x, user y)
+        {
+            auto cx = countSettled(x);
+            auto cy = countSettled(y);
+            return cx > cy;
+        }
+
+        sort!(myComp)(us);
+        return us;
+    }
+
+    int countSettled(user u)
+    {
+        auto now = Clock.currTime.toUTC.toISOExtString;
+        auto query = db.prepare(
+            "SELECT COUNT(id) FROM predictions WHERE creator=? AND (settled IS NOT NULL OR closes<?);");
+        query.bind(1, u.id);
+        query.bind(2, now);
+        return query.execute().oneValue!int;
     }
 
     private auto parsePredictionQuery(ResultRange query)
@@ -216,7 +257,8 @@ struct database
     prediction[] activePredictions()
     {
         SysTime now = Clock.currTime.toUTC;
-        auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX ~ "WHERE closes > ? AND settled IS NULL ORDER BY closes;");
+        auto query = db.prepare(
+            SQL_SELECT_PREDICTION_PREFIX ~ "WHERE closes > ? AND settled IS NULL ORDER BY closes;");
         query.bind(1, now.toISOExtString());
         return parsePredictionQuery(query.execute());
     }

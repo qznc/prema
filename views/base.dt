@@ -20,6 +20,7 @@ html
 					button#signout(onclick='javascript:navigator.id.logout()') Log Out
 			p
 				a(href="/") Overview
+				a(href="/highscores") Highscores
 				- if (req.session)
 					a(href="/create") Create
 					- auto userid = req.session.get!int("userId");
