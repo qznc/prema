@@ -43,7 +43,8 @@ html
 					- foreach(order; db.getLastOrders())
 						tr
 							td
-								a(href="/p/#{order.predid}") p/#{order.predid}
+								- auto op = db.getPrediction(order.predid);
+								a(href="/p/#{order.predid}", title="#{op.statement}") p/#{order.predid}
 							td
 								span(class="share_count") #{order.share_count}
 							td
