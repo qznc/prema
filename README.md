@@ -1,3 +1,5 @@
+![Travis-CI Status](https://travis-ci.org/qznc/prema.svg?branch=master)
+
 # Prema Prediction Market
 
 A [prediction market](https://en.wikipedia.org/wiki/Prediction_market) web app.
