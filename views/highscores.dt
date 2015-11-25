@@ -1,0 +1,17 @@
+extends base
+
+block body
+	h2 Most Cash
+	table(class="highscore")
+		- foreach (user; db.getUsersByCash)
+			- auto cash = db.getCash(user.id);
+			tr
+				td #{user.name}
+				td #{cash}
+	h2 Most Settled Predictions
+	table(class="highscore")
+		- foreach (user; db.getUsersByClosedPredictions)
+			- auto pred_count = db.countSettled(user);
+			tr
+				td #{user.name}
+				td #{pred_count}
