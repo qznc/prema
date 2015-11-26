@@ -1,2 +1,1 @@
 language: d
-script: dub build --compiler=${DC}

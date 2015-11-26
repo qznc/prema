@@ -41,11 +41,15 @@ shared static this()
     ;
     // dfmt on
 
-    auto settings = new HTTPServerSettings;
-    settings.port = port;
-    settings.bindAddresses = ["141.3.44.16", host];
-    settings.sessionStore = new MemorySessionStore;
-    listenHTTP(settings, router);
+    version (unittest) {
+        /* do not start server if unittesting */
+    } else {
+        auto settings = new HTTPServerSettings;
+        settings.port = port;
+        settings.bindAddresses = ["141.3.44.16", host];
+        settings.sessionStore = new MemorySessionStore;
+        listenHTTP(settings, router);
+    }
 }
 
 void index(HTTPServerRequest req, HTTPServerResponse res)

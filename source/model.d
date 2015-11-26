@@ -6,7 +6,7 @@ import std.stdio : writeln;
 import std.math : log, exp, isNaN, abs;
 import std.conv : text, to;
 import std.format : formatValue, singleSpec, formattedWrite;
-import std.datetime : Clock, SysTime;
+import std.datetime : Clock, SysTime, dur;
 import std.exception : enforce;
 import std.file : exists;
 
@@ -695,12 +695,12 @@ unittest
 {
     auto db = getMemoryDatabase();
     auto user = db.getUser(1);
-    auto end1 = SysTime.fromISOExtString("2015-02-02T05:45:55  +00:00");
-    db.createPrediction("This app will actually be used.", end1, user);
-    auto end2 = SysTime.fromISOExtString("2015-12-12T05:45:  55+00:00");
-    db.createPrediction("Michelle Obama becomes president.", end2, user);
     SysTime now = Clock.currTime.toUTC;
-    foreach (p; db.predictions)
+    auto end1 = now + dur!"hours"(7);
+    db.createPrediction(100, "This app will actually be used.", end1, user);
+    auto end2 = now + dur!"hours"(8);
+    db.createPrediction(100, "Michelle Obama becomes president.", end2, user);
+    foreach (p; db.activePredictions)
     {
         assert(p.statement);
         assert(p.chance >= 0.0);
@@ -715,11 +715,12 @@ unittest
 unittest
 {
     auto db = getMemoryDatabase();
-    auto user = db.getUser(1);
+    auto user = db.getUser("foo@bar.de");
     auto stmt = "This app will be actually used.";
-    db.createPrediction(stmt, "2015-02-02T05:45:55+00:00", user);
-    auto admin = db.getUser(1);
-    assert(admin.email == "root@localhost");
+    SysTime now = Clock.currTime.toUTC;
+    auto end = now + dur!"hours"(7);
+    db.createPrediction(100, stmt, end, user);
+    auto admin = db.getUser(user.id);
     auto pred = db.getPrediction(1);
     assert(pred.statement == stmt);
     void assert_roughly(real a, real b)
@@ -732,16 +733,16 @@ unittest
     assert(pred.no_shares == 0, text(pred.no_shares));
     assert_roughly(pred.chance, 0.5);
     auto price = pred.cost(10, share_type.no);
-    assert_roughly(price, 5.1249);
     assert(pred.cost(10, share_type.yes) == price);
-    db.buy(admin, pred, 10, share_type.no, price);
-    assert(pred.cost(10, share_type.no) > price, text(pred.cost(10,
+    db.buy(admin.id, pred.id, 10, share_type.no, price);
+
+    auto pred2 = db.getPrediction(1);
+    assert(pred2.cost(10, share_type.no) > price, text(pred2.cost(10,
         share_type.no)) ~ " !> " ~ text(price));
     /* check for database state */
-    auto admin2 = db.getUser(1);
-    auto pred2 = db.getPrediction(1);
-    assert(pred.yes_shares == 0, text(pred.yes_shares));
-    assert(pred.no_shares == 10, text(pred.no_shares));
-    auto price2 = pred.cost(10, share_type.no);
-    assert_roughly(price2, 5.37422);
+    auto admin2 = db.getUser(user.id);
+    auto pred22 = db.getPrediction(pred2.id);
+    assert(pred2.yes_shares == 0, text(pred2.yes_shares));
+    assert(pred2.no_shares == 10, text(pred2.no_shares));
+    auto price2 = pred2.cost(10, share_type.no);
 }

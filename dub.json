@@ -8,7 +8,16 @@
 		"d2sqlite3": "~>0.7.3",
 		"vibe-d": "~>0.7.19"
 	},
-	"versions": ["VibeDefaultMain"],
 	"lflags": ["sqlite3/libsqlite3.so"],
 	"preBuildCommands": ["cd sqlite3 && make"],
+	"configurations": [
+		{
+			"name": "application",
+			"targetType": "executable",
+			"versions": ["VibeDefaultMain"],
+		},
+		{
+			"name": "library",
+		},
+	]
 }
