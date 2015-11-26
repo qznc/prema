@@ -92,7 +92,12 @@ block body
 		  var options = {
 		    title: 'History of Chance',
 		    legend: 'none',
+		    crosshair: { trigger: 'both' },
 		    backgroundColor: { fill:'transparent' },
+		    colors: ['#588681'],
+		    lineWidth: 1,
+		    pointSize: 7,
+		    pointShape: 'diamond',
 		    hAxis: {title: 'time'},
 		    vAxis: {title: '%', minValue: 0, maxValue: 100}
 		  };
