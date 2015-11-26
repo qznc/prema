@@ -12,6 +12,7 @@ block body
 	table(class="highscore")
 		- foreach (user; db.getUsersByClosedPredictions)
 			- auto pred_count = db.countSettled(user);
+			- if (pred_count == 0) continue;
 			tr
 				td #{user.name}
 				td #{pred_count}
