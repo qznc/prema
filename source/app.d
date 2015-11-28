@@ -168,7 +168,13 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
     {
         auto email = req.session.get!string("userEmail");
         auto user = db.getUser(email);
+        auto last = db.lastPredCreateDateBy(user);
         db.createPrediction(b_parsed, pred, end_parsed, user);
+        auto diff = now - last;
+        if (diff.total!"hours" >= 24*2 + 23)
+        {
+            db.cashBonus(user, credits(5), "Bonus is given every three days if you create a prediction.");
+        }
         res.redirect("/");
     }
     else
@@ -210,7 +216,14 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         errors ~= "That would have cost " ~ text(price) ~ ", but you only have " ~ text(cash) ~ ".";
     if (errors.empty)
     {
+        auto last = db.lastTransactionDateBy(user);
         db.buy(user.id, id, amount, type, price);
+        auto now = Clock.currTime.toUTC;
+        auto diff = now - last;
+        if (diff.total!"hours" >= 23)
+        {
+            db.cashBonus(user, credits(10), "Bonus is given once per day if you order something.");
+        }
         res.redirect(req.path);
     }
     else

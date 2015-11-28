@@ -208,6 +208,14 @@ struct database
         q.execute();
     }
 
+    void cashBonus(user u, millicredits amount, string msg)
+    {
+        db.execute("BEGIN TRANSACTION;");
+        transferMoney(FUNDER_ID, u.id, amount, 0, share_type.init);
+        messageTo(u, "Cash Bonus: " ~ text(amount), msg);
+        db.execute("END TRANSACTION;");
+    }
+
     prediction getPrediction(int id)
     {
         auto query = db.prepare(SQL_SELECT_PREDICTION_PREFIX ~ "WHERE id = ?;");
@@ -380,6 +388,54 @@ struct database
         q.bind(5, t);
         q.bind(6, now);
         q.execute();
+    }
+
+    private auto lastBonusCash(user u)
+    {
+        SysTime t = Clock.currTime.toUTC;
+        auto q = db.prepare("SELECT date FROM transactions WHERE receiver=? AND yes_order=? ORDER BY date DESC LIMIT 1;");
+        q.bind(1, u.id);
+        q.bind(1, share_type.init);
+        foreach (row; q.execute())
+        {
+            auto date = row.peek!string(0);
+            return SysTime.fromISOExtString(date);
+        }
+        return t;
+    }
+
+    auto lastTransactionDateBy(user u)
+    {
+        SysTime t = Clock.currTime.toUTC;
+        auto last_bonus = lastBonusCash(u);
+        auto q = db.prepare("SELECT date FROM orders WHERE user=? ORDER BY date DESC LIMIT 1;");
+        q.bind(1, u.id);
+        foreach (row; q.execute())
+        {
+            auto date = SysTime.fromISOExtString(row.peek!string(0));
+            if (last_bonus < date)
+                return last_bonus;
+            else
+                return date;
+        }
+        return t;
+    }
+
+    auto lastPredCreateDateBy(user u)
+    {
+        SysTime t = Clock.currTime.toUTC;
+        auto last_bonus = lastBonusCash(u);
+        auto q = db.prepare("SELECT created FROM predictions WHERE creator=? ORDER BY created DESC LIMIT 1;");
+        q.bind(1, u.id);
+        foreach (row; q.execute())
+        {
+            auto date = SysTime.fromISOExtString(row.peek!string(0));
+            if (last_bonus < date)
+                return last_bonus;
+            else
+                return date;
+        }
+        return t;
     }
 
     millicredits getCash(int userid)
