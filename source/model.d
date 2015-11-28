@@ -111,6 +111,13 @@ void init_empty_db(Database db)
 		yes_order INTEGER, /* what was bought 0=neither, 1=yes, 2=no */
 		date TEXT NOT NULL /* ISO8601 date */
 		);");
+    db.execute("CREATE TABLE messages (
+		id INTEGER PRIMARY KEY,
+		receiver INTEGER, /* userid */
+		title TEXT NOT NULL, /* short message */
+		msg TEXT NOT NULL, /* longer text */
+		seen INTEGER /* 1=unseen, 2=seen */
+		);");
 }
 
 immutable SQL_SELECT_PREDICTION_PREFIX = "SELECT id,b,statement,created,creator,closes,settled,result FROM predictions ";
@@ -149,7 +156,11 @@ struct database
             return user(id, name, email);
         }
         writeln("user " ~ email ~ " does not exist yet. Create it.");
-        /* user does not exist yet */
+        return createUser(email);
+    }
+
+    private user createUser(string email)
+    {
         auto name = emailPrefix(email);
         db.execute("BEGIN TRANSACTION;");
         auto q = db.prepare("INSERT INTO users VALUES (NULL, ?, ?);");
@@ -158,8 +169,43 @@ struct database
         q.execute();
         auto user = getUser(email);
         transferMoney(FUNDER_ID, user.id, credits(1000), 0, share_type.init);
+        messageTo(user,
+            "Welcome!",
+            "Hello to Prema. Have fun betting! Questions? <a href=\"/about\">Answers</a>.");
         db.execute("END TRANSACTION;");
         return user;
+    }
+
+    void messageTo(user receiver, string title, string msg)
+    {
+        auto q = db.prepare("INSERT INTO messages VALUES (NULL, ?, ?, ?, 1);");
+        q.bind(1, receiver.id);
+        q.bind(2, title);
+        q.bind(3, msg);
+        q.execute();
+        writeln("msg to " ~ text(receiver.id) ~ ": " ~ title);
+    }
+
+    auto getUnseenMessages(int userid)
+    {
+        auto q = db.prepare("SELECT id,title,msg FROM messages WHERE receiver=? AND seen==1;");
+        q.bind(1, userid);
+        message[] msgs;
+        foreach (row; q.execute())
+        {
+            auto mid = row.peek!int(0);
+            auto title = row.peek!string(1);
+            auto msg = row.peek!string(2);
+            msgs ~= message(mid, userid, title, msg, false);
+        }
+        return msgs;
+    }
+
+    void markMessageSeen(int messageId)
+    {
+        auto q = db.prepare("UPDATE messages SET seen=2 WHERE id=?;");
+        q.bind(1, messageId);
+        q.execute();
     }
 
     prediction getPrediction(int id)
@@ -528,6 +574,14 @@ struct database
         query.bind(3, t);
         return query.execute().oneValue!int;
     }
+}
+
+struct message
+{
+    int id;
+    int receiver;
+    string title, msg;
+    bool seen;
 }
 
 struct predStats

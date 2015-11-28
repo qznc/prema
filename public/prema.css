@@ -5,7 +5,10 @@ html, body { font-family: "Lucida Grande", "Lucida Sans Unicode", "Lucida Sans",
 h1 { font-size: 2em; line-height: 1.3em; font-weight: normal; }
 #cash,
 h2 { font-size: 1.2em; line-height: 1.3em; font-weight: normal; }
-h3 { font-size: 1em; line-height: 1.3em; font-weight: bold; }
+h3 { font-size: 1em; line-height: 1.3em; }
+
+#unseen_messages .message .title,
+h3 { font-weight: bold; }
 
 #sidebar table,
 #raw_history { font-size: 0.8em; }
@@ -15,6 +18,7 @@ table th { font-weight: normal; padding-right: 1em; }
 /** COLORS **/
 /* Scheme: #012744, #155764, #588681, #8c9c88, #f2dbae */
 
+#unseen_messages .message,
 header a:hover,
 body { background-color: #f2dbae; color: #012744; }
 
@@ -26,6 +30,9 @@ a:hover { text-decoration: none; }
 
 #price.too_much,
 .error { background-color: #f99; color: #600; border: 1px solid #600; }
+
+#unseen_messages .message { border: 4px solid #012744; }
+#unseen_messages button { color: #012744; }
 
 p.no_preds,
 li time { color: #155764; }
@@ -69,6 +76,10 @@ footer .version { margin-left: 3em; }
 
 #sidebar,
 article { float: left; }
+
+#unseen_messages { position: absolute; left: 1em; top: 1em; }
+#unseen_messages .message { padding: 1em; margin-bottom: 1em; }
+#unseen_messages .message .title { display: block; width: auto; }
 
 #sidebar { position: absolute; left: 41em; top: 5em; width: 15em; }
 

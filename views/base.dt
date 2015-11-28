@@ -30,6 +30,20 @@ html
 		article
 			block body
 
+		- if (req.session)
+			div(id="unseen_messages")
+				- auto userid = req.session.get!int("userId");
+				- auto msgs = db.getUnseenMessages(userid);
+				- foreach(msg; msgs)
+					form(method="POST", action="/seen")
+						p(class="message")
+							input(type="hidden", name="mid", value="#{msg.id}")
+							span(class="title")
+								|!= msg.title
+							span(class="msg")
+								|!= msg.msg
+							button Dismiss
+
 		div(id="sidebar")
 			- if (req.session)
 				- auto userid = req.session.get!int("userId");

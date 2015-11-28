@@ -36,14 +36,18 @@ shared static this()
         .get("/create", &get_create)
         .post("/create", &post_create)
         .post("/settle", &post_settle)
+        .post("/seen", &message_seen)
         .post("/p/:predID", &buy_shares)
         .post("/u/:userID", &show_user)
     ;
     // dfmt on
 
-    version (unittest) {
+    version (unittest)
+    {
         /* do not start server if unittesting */
-    } else {
+    }
+    else
+    {
         auto settings = new HTTPServerSettings;
         settings.port = port;
         settings.bindAddresses = ["141.3.44.16", host];
@@ -228,6 +232,16 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
     auto result = req.form["settlement"] == "true";
     db.settle(pred.id, result);
     res.redirect("/p/" ~ text(pred.id));
+}
+
+void message_seen(HTTPServerRequest req, HTTPServerResponse res)
+{
+    enforceHTTP(req.method == HTTPMethod.POST, HTTPStatus.badRequest, "only POST accepted");
+    assert(req.session);
+    auto mid = to!int(req.form["mid"]);
+    auto db = getDatabase();
+    db.markMessageSeen(mid);
+    res.redirect("/");
 }
 
 void show_user(HTTPServerRequest req, HTTPServerResponse res)
