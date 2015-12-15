@@ -282,7 +282,7 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
 {
     enforceHTTP("assertion" in req.form, HTTPStatus.badRequest, "Missing assertion field.");
     const ass = req.form["assertion"];
-    const audience = "http://" ~ (req.host) ~ ":" ~ text(port) ~ "/";
+    const audience = "http://" ~ (req.host) ~ "/";
     if (req.session)
     {
         logInfo("session already started for " ~ req.session.get!string("userEmail"));
