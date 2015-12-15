@@ -295,10 +295,15 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
         req.contentType = "application/x-www-form-urlencoded";
         auto bdy = "assertion=" ~ ass ~ "&audience=" ~ audience;
         req.bodyWriter.write(bdy);
+        logInfo("verifying login at persona.org: "~text(ass)~":"~text(audience));
     }, (scope res2) {
+        logInfo("persona server responded");
         auto answer = res2.readJson();
+        logInfo("json read: "~text(answer));
         enforceHTTP(answer["status"] == "okay", HTTPStatus.badRequest, "Verification failed.");
+        logInfo("persona status: "~text(answer["status"]));
         enforceHTTP(answer["audience"] == audience, HTTPStatus.badRequest, "Verification failed.");
+        logInfo("persona audience: "~text(answer["audience"]));
         string expires = answer["expires"].to!string;
         string issuer = answer["issuer"].to!string;
         string email = answer["email"].to!string;
