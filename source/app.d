@@ -295,11 +295,13 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
     logInfo("verifyPersona");
 
     requestHTTP("https://verifier.login.persona.org/verify", (scope req) {
+        logInfo("send request to persona.org");
         req.method = HTTPMethod.POST;
         req.contentType = "application/x-www-form-urlencoded";
         auto bdy = "assertion=" ~ ass ~ "&audience=" ~ audience;
-        req.bodyWriter.write(bdy);
         logInfo("verifying login at persona.org. audience="~text(audience));
+        req.bodyWriter.write(bdy);
+        logInfo("request sent");
     }, (scope res2) {
         logInfo("persona server responded");
         auto answer = res2.readJson();
