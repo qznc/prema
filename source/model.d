@@ -393,7 +393,8 @@ struct database
     private auto lastBonusCash(user u)
     {
         SysTime t = Clock.currTime.toUTC;
-        auto q = db.prepare("SELECT date FROM transactions WHERE receiver=? AND yes_order=? ORDER BY date DESC LIMIT 1;");
+        auto q = db.prepare(
+            "SELECT date FROM transactions WHERE receiver=? AND yes_order=? ORDER BY date DESC LIMIT 1;");
         q.bind(1, u.id);
         q.bind(1, share_type.init);
         foreach (row; q.execute())
@@ -425,7 +426,8 @@ struct database
     {
         SysTime t = Clock.currTime.toUTC;
         auto last_bonus = lastBonusCash(u);
-        auto q = db.prepare("SELECT created FROM predictions WHERE creator=? ORDER BY created DESC LIMIT 1;");
+        auto q = db.prepare(
+            "SELECT created FROM predictions WHERE creator=? ORDER BY created DESC LIMIT 1;");
         q.bind(1, u.id);
         foreach (row; q.execute())
         {
@@ -728,11 +730,13 @@ struct user
 
 database getDatabase()
 {
-    auto path = "prema.sqlite3";
+    auto path = "/var/prema/prema.sqlite3";
     bool init = !exists(path);
+    writeln("getDatabase ", path);
     auto db = database(path);
     if (init)
     {
+        writeln("init_empty_db");
         init_empty_db(db.db);
     }
     return db;

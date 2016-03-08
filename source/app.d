@@ -8,7 +8,7 @@ import model;
 import std.conv : to, ConvException;
 
 static immutable host = "127.0.0.1";
-static immutable port = 8080;
+static immutable port = 8000;
 
 shared static this()
 {
@@ -171,11 +171,15 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
         auto last = db.lastPredCreateDateBy(user);
         db.createPrediction(b_parsed, pred, end_parsed, user);
         auto diff = now - last;
-        if (diff.total!"hours" >= 24*2 + 23)
+        if (diff.total!"hours" >= 24 * 2 + 23)
         {
-            db.cashBonus(user, credits(20), "Bonus is given every three days if you create a prediction.");
-        } else {
-            logInfo("no cash bonus for "~text(user)~" because diff="~text(diff.total!"hours")~"h");
+            db.cashBonus(user, credits(20),
+                "Bonus is given every three days if you create a prediction.");
+        }
+        else
+        {
+            logInfo(
+                "no cash bonus for " ~ text(user) ~ " because diff=" ~ text(diff.total!"hours") ~ "h");
         }
         res.redirect("/");
     }
@@ -225,8 +229,11 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         if (diff.total!"hours" >= 23)
         {
             db.cashBonus(user, credits(5), "Bonus is given once per day if you order something.");
-        } else {
-            logInfo("no cash bonus for "~text(user)~" because diff="~text(diff.total!"hours")~"h");
+        }
+        else
+        {
+            logInfo(
+                "no cash bonus for " ~ text(user) ~ " because diff=" ~ text(diff.total!"hours") ~ "h");
         }
         res.redirect(req.path);
     }
@@ -299,17 +306,17 @@ void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
         req.method = HTTPMethod.POST;
         req.contentType = "application/x-www-form-urlencoded";
         auto bdy = "assertion=" ~ ass ~ "&audience=" ~ audience;
-        logInfo("verifying login at persona.org. audience="~text(audience));
+        logInfo("verifying login at persona.org. audience=" ~ text(audience));
         req.bodyWriter.write(bdy);
         logInfo("request sent");
     }, (scope res2) {
         logInfo("persona server responded");
         auto answer = res2.readJson();
-        logInfo("json read: "~text(answer));
+        logInfo("json read: " ~ text(answer));
         enforceHTTP(answer["status"] == "okay", HTTPStatus.badRequest, "Verification failed.");
-        logInfo("persona status: "~text(answer["status"]));
+        logInfo("persona status: " ~ text(answer["status"]));
         enforceHTTP(answer["audience"] == audience, HTTPStatus.badRequest, "Verification failed.");
-        logInfo("persona audience: "~text(answer["audience"]));
+        logInfo("persona audience: " ~ text(answer["audience"]));
         string expires = answer["expires"].to!string;
         string issuer = answer["issuer"].to!string;
         string email = answer["email"].to!string;
