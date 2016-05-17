@@ -130,6 +130,7 @@ struct database
     this(string sqlite_path)
     {
         this.db = Database(sqlite_path);
+        assert(null != this.db);
     }
 
     user getUser(int id)
