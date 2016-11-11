@@ -4,8 +4,9 @@ LICENSE: http://www.apache.org/licenses/LICENSE-2.0
 */
 
 import vibe.d;
+static import vibe.textfilter.markdown;
 import model;
-import std.conv : to, ConvException;
+import std.conv : text, to, ConvException;
 
 static immutable host = "127.0.0.1";
 static immutable port = 8080;
