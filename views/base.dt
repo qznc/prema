@@ -13,11 +13,11 @@ html
 		link(rel='stylesheet', type='text/css', href='/static/prema.css')
 	body
 		header
-			#personaButtons
+			#githubLoginButton
 				- if (!req.session)
-					button#signin(onclick='javascript:navigator.id.request()') Log In
+					a(href="/login") Log In
 				- else
-					button#signout(onclick='javascript:navigator.id.logout()') Log Out
+					a(href="/logout") Log Out
 			p
 				a(href="/") Overview
 				a(href="/highscores") Highscores
@@ -71,46 +71,4 @@ html
 			p
 				a(href="/about") About
 				span(class="version") #{VER}
-		script(src='https://login.persona.org/include.js')
-		:javascript
-			function simpleXhrSentinel(xhr) {
-				return function() {
-					if (xhr.readyState == 4) {
-						if (xhr.status == 200){
-							window.location.reload();
-							}
-						else {
-							navigator.id.logout();
-							}
-						}
-						}
-					}
-
-			function verifyAssertion(assertion) {
-				// Your backend must return HTTP status code 200 to indicate successful
-				// verification of user's email address and it must arrange for the binding
-				// of currentUser to said address when the page is reloaded
-				var xhr = new XMLHttpRequest();
-				xhr.open("POST", "/login", true);
-				// see http://www.openjs.com/articles/ajax_xmlhttp_using_post.php
-				var param = "assertion="+assertion;
-				xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-				xhr.send(param); // for verification by your backend
-				xhr.onreadystatechange = simpleXhrSentinel(xhr); }
-
-			function signoutUser() {
-				// Your backend must return HTTP status code 200 to indicate successful
-				// sign out (usually the resetting of one or more session variables) and
-				// it must arrange for the binding of currentUser to 'null' when the page
-				// is reloaded
-				var xhr = new XMLHttpRequest();
-				xhr.open("GET", "/logout", true);
-				xhr.send(null);
-				xhr.onreadystatechange = simpleXhrSentinel(xhr); }
-
-		- if (req.session)
-			| <script type="text/javascript">navigator.id.watch( { loggedInUser: "#{req.session.get("userEmail","")}", onlogin: verifyAssertion, onlogout: signoutUser } );</script>
-		- if (!req.session)
-			| <script type="text/javascript">navigator.id.watch( { loggedInUser: "", onlogin: verifyAssertion, onlogout: signoutUser } );</script>
-		- else
 		script(src='/static/prema.js')

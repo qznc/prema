@@ -48,7 +48,7 @@ header a { padding: 0 2px; }
 
 article { margin: 1em 1em; max-width: 40em; }
 
-#personaButtons { float: right; }
+#githubLoginButton { float: right; margin-top: 1em; }
 
 table th { text-align: right; }
 

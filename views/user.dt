@@ -18,8 +18,3 @@ block body
 	- predList(predsActive, "No active predictions. <a href=\"/create\">Create some</a>!");
 	h2 Closed Predictions
 	- predList(predsClosed, "No closed predications.");
-	h2 Change Username
-		form(method="POST")
-			input(type="text", name="new_name", value="#{user.name}", size=12)
-			button Change
-
