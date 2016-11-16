@@ -10,8 +10,6 @@ So far only provides binary markets.
 
 Prediction markets are also known as predictive markets, information markets, decision markets, idea futures, event derivatives, or virtual markets.
 
-Uses [Mozilla Persona](http://127.0.0.1:8080) for authentification.
-
 ## Setup
 
 SQLite is included, so you only need a D compiler
@@ -19,6 +17,11 @@ and the dub packaging tool.
 
 1. Compile and run prema via `dub`.
 2. Browse to `http://127.0.0.1:8080`.
+
+Uses Github for authentication.
+This requires you to register an Application on Github
+an provide id and secret via environment variables `GH_BASIC_CLIENT_ID`
+and `GH_BASIC_CLIENT_SECRET`.
 
 ## Desirable Features
 
