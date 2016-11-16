@@ -145,29 +145,30 @@ struct database
         throw new Exception("User " ~ text(id) ~ " does not exist.");
     }
 
-    user getUser(string email)
+    user getUser(string nick)
     {
-        auto query = db.prepare("SELECT id, name FROM users WHERE email = ?");
-        query.bind(1, email);
+        assert(nick != "");
+        auto query = db.prepare("SELECT id, email FROM users WHERE name = ?");
+        query.bind(1, nick);
         foreach (row; query.execute())
         {
             auto id = row.peek!int(0);
-            auto name = row.peek!string(1);
-            return user(id, name, email);
+            auto email = row.peek!string(1);
+            return user(id, nick, email);
         }
-        writeln("user " ~ email ~ " does not exist yet. Create it.");
-        return createUser(email);
+        writeln("user " ~ nick ~ " does not exist yet. Create it.");
+        return createUser(nick);
     }
 
-    private user createUser(string email)
+    private user createUser(string nick)
     {
-        auto name = emailPrefix(email);
+        auto email = "";
         db.execute("BEGIN TRANSACTION;");
         auto q = db.prepare("INSERT INTO users VALUES (NULL, ?, ?);");
-        q.bind(1, name);
+        q.bind(1, nick);
         q.bind(2, email);
         q.execute();
-        auto user = getUser(email);
+        auto user = getUser(nick);
         transferMoney(FUNDER_ID, user.id, credits(1000), 0, share_type.init);
         messageTo(user,
             "Welcome!",

@@ -7,6 +7,7 @@ import vibe.d;
 static import vibe.textfilter.markdown;
 import model;
 import std.conv : text, to, ConvException;
+import std.process : environment;
 
 static immutable host = "127.0.0.1";
 static immutable port = 8080;
@@ -21,7 +22,8 @@ shared static this()
         .get("/highscores", &highscores)
         .get("/p/:predID", &prediction)
         .get("/u/:userID", &show_user)
-        .post("/login", &verifyPersona)
+        .any("/login", &loginGithub)
+        .any("/github_authorized", &githubCallback)
         .any("/logout", &logout)
     ;
     // dfmt on
@@ -71,19 +73,19 @@ void renderPrediction(model.prediction pred, database db, string[] errors,
 {
     auto now = Clock.currTime;
     auto creator = db.getUser(pred.creator);
-    string email = "@@";
+    int userId = -1;
     int your_yes_shares = 0;
     int your_no_shares = 0;
     predStats predStats;
     if (req.session)
     {
-        email = req.session.get!string("userEmail");
-        auto user = db.getUser(email);
+        userId = req.session.get!int("userId");
+        auto user = db.getUser(userId);
         your_yes_shares = db.countPredShares(pred, user, share_type.yes);
         your_no_shares = db.countPredShares(pred, user, share_type.no);
         predStats = db.getUsersPredStats(user.id, pred.id);
     }
-    bool can_settle = email == creator.email;
+    bool can_settle = userId == creator.id;
     auto closed = now > SysTime.fromISOExtString(pred.closes);
     auto settled = pred.settled !is null;
     auto pred_changes = db.getPredChanges(pred);
@@ -167,8 +169,8 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
     }
     if (errors.empty)
     {
-        auto email = req.session.get!string("userEmail");
-        auto user = db.getUser(email);
+        auto userId = req.session.get!int("userId");
+        auto user = db.getUser(userId);
         auto last = db.lastPredCreateDateBy(user);
         db.createPrediction(b_parsed, pred, end_parsed, user);
         auto diff = now - last;
@@ -207,8 +209,8 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
     auto id = to!int(req.params["predID"]);
     auto db = getDatabase();
     auto pred = db.getPrediction(id);
-    auto email = req.session.get!string("userEmail");
-    auto user = db.getUser(email);
+    auto userId = req.session.get!int("userId");
+    auto user = db.getUser(userId);
     auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
     auto count = db.countPredShares(pred, user, type);
     if (count + amount < 0)
@@ -244,8 +246,8 @@ void post_settle(HTTPServerRequest req, HTTPServerResponse res)
     auto id = to!int(req.form["predid"]);
     auto db = getDatabase();
     auto pred = db.getPrediction(id);
-    auto email = req.session.get!string("userEmail");
-    auto user = db.getUser(email);
+    auto userId = req.session.get!int("userId");
+    auto user = db.getUser(userId);
     enforceHTTP(user.id == pred.creator, HTTPStatus.badRequest, "only creator can settle");
     auto result = req.form["settlement"] == "true";
     db.settle(pred.id, result);
@@ -267,15 +269,6 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
     auto id = to!int(req.params["userID"]);
     auto db = getDatabase();
     auto user = db.getUser(id);
-    if (req.method == HTTPMethod.POST)
-    {
-        enforceHTTP(req.session, HTTPStatus.badRequest, "must be logged in to change name");
-        auto email = req.session.get!string("userEmail");
-        enforceHTTP(email == user.email, HTTPStatus.badRequest,
-            "you can only change your own name");
-        auto new_name = req.form["new_name"];
-        db.setUserName(id, new_name);
-    }
     string pageTitle = user.name;
     auto cash = db.getCash(id);
     auto predsActive = db.usersActivePredictions(id);
@@ -283,49 +276,66 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
     res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
 }
 
-void verifyPersona(HTTPServerRequest req, HTTPServerResponse res)
+/* Github Auth 1: Send user to Github */
+void loginGithub(HTTPServerRequest req, HTTPServerResponse res)
 {
-    enforceHTTP("assertion" in req.form, HTTPStatus.badRequest, "Missing assertion field.");
-    const ass = req.form["assertion"];
-    const audience = "http://" ~ (req.host) ~ "/";
-    if (req.session)
-    {
-        logInfo("session already started for " ~ req.session.get!string("userEmail"));
-        return;
-    }
-    logInfo("verifyPersona");
+    auto url = "https://github.com/login/oauth/authorize?scope=user:email&client_id=" ~ environment.get("GH_BASIC_CLIENT_ID","id-unknown");
+    logInfo("redirect to github auth");
+    res.redirect(url);
+}
 
-    requestHTTP("https://verifier.login.persona.org/verify", (scope req) {
-        logInfo("send request to persona.org");
+/* Github Auth 2: User comes back from Github with token */
+void githubCallback(HTTPServerRequest req, HTTPServerResponse res)
+{
+    auto code = req.query.get("code", "nope");
+    auto url = "https://github.com/login/oauth/access_token";
+    requestHTTP(url, (scope req) {
+        logInfo("check token with Github");
         req.method = HTTPMethod.POST;
+        req.headers["Accept"] = "application/json";
         req.contentType = "application/x-www-form-urlencoded";
-        auto bdy = "assertion=" ~ ass ~ "&audience=" ~ audience;
-        logInfo("verifying login at persona.org. audience="~text(audience));
+        auto bdy = "client_id=" ~ environment.get("GH_BASIC_CLIENT_ID", "id-unknown") ~
+            "&client_secret=" ~ environment.get("GH_BASIC_CLIENT_SECRET", "secret-unknown") ~
+            "&code="~code;
         req.bodyWriter.write(bdy);
-        logInfo("request sent");
     }, (scope res2) {
-        logInfo("persona server responded");
-        auto answer = res2.readJson();
-        logInfo("json read: "~text(answer));
-        enforceHTTP(answer["status"] == "okay", HTTPStatus.badRequest, "Verification failed.");
-        logInfo("persona status: "~text(answer["status"]));
-        enforceHTTP(answer["audience"] == audience, HTTPStatus.badRequest, "Verification failed.");
-        logInfo("persona audience: "~text(answer["audience"]));
-        string expires = answer["expires"].to!string;
-        string issuer = answer["issuer"].to!string;
-        string email = answer["email"].to!string;
-        logInfo("start session for " ~ email);
+        logInfo("got answer from Github");
+        if (!res2.statusCode == 200) {
+            logWarn("Error: "~text(res2.statusCode));
+            return;
+        }
+        assert(res2.contentType == "application/json; charset=utf-8");
+        auto json = res2.readJson();
+        if ("error" in json) {
+            logInfo(text(json["error_description"]));
+            logInfo(text(json["error_uri"]));
+            return;
+        }
+        logInfo("authenticated :)");
+        auto access_token = json["access_token"].get!string;
         auto session = res.startSession();
-        session.set("userEmail", email);
-        session.set("persona_expires", expires);
-        session.set("persona_issuer", issuer);
-        auto db = getDatabase();
-        auto user = db.getUser(email);
-        session.set("userId", user.id);
-        session.set("userName", user.name);
-        logInfo("Successfully logged in " ~ text(user.name));
+        session.set("github_access_token", access_token);
+        requestHTTP("https://api.github.com/user?access_token="~access_token, (scope req) {
+            req.method = HTTPMethod.GET;
+            req.headers["Accept"] = "application/json";
+        }, (scope res3) {
+            logInfo("got info from Github");
+            if (!res3.statusCode == 200) {
+                logWarn("Error: "~text(res3.statusCode));
+                res.terminateSession();
+                return;
+            }
+            assert(res3.contentType == "application/json; charset=utf-8");
+            logInfo("... successfully");
+            auto json = res3.readJson();
+            auto nick = json["login"].get!string;
+            auto db = getDatabase();
+            auto user = db.getUser(nick);
+            session.set("userId", user.id);
+            session.set("userName", user.name);
+        });
     });
-    res.bodyWriter.write("ok");
+    res.redirect("/");
 }
 
 void logout(HTTPServerRequest req, HTTPServerResponse res)
