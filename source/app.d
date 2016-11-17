@@ -22,6 +22,7 @@ shared static this()
         .get("/highscores", &highscores)
         .get("/p/:predID", &prediction)
         .get("/u/:userID", &show_user)
+        .get("/predictions.atom", &feed_predictions)
         .any("/login", &loginGithub)
         .any("/github_authorized", &githubCallback)
         .any("/logout", &logout)
@@ -103,6 +104,20 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
     string[] errors;
     renderPrediction(pred, db, errors, req, res);
 }
+
+void feed_predictions(HTTPServerRequest req, HTTPServerResponse res)
+{
+    auto pageTitle = "Prema Active Predictions";
+    auto db = getDatabase();
+    auto preds = db.activePredictions();
+    string last_update;
+    foreach(pred; preds) {
+        if (pred.created > last_update)
+            last_update = pred.created;
+    }
+    res.render!("atom.dt", pageTitle, preds, req, last_update);
+}
+
 
 void highscores(HTTPServerRequest req, HTTPServerResponse res)
 {

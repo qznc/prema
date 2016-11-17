@@ -1,0 +1,17 @@
+- import std.math : round;
+doctype xml
+feed(xmlns="http://www.w3.org/2005/Atom")
+	title #{pageTitle}
+	id #{req.fullURL}
+	link(rel='self', href='#{req.fullURL}')
+	link(href='http://#{req.host}')
+	updated #{last_update}
+	- foreach(i,pred; preds)
+		entry
+			title #{pred.statement}
+			author
+				name #{pred.creator}
+			updated #{pred.created}
+			summary chance: #{round(pred.chance * 100)}%
+			link(href='http://#{req.host}/p/#{pred.id}')
+			id pred-#{req.host}/p/#{pred.id}
