@@ -225,6 +225,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
     auto id = to!int(req.params["predID"]);
     auto db = getDatabase();
     auto pred = db.getPrediction(id);
+    enforceHTTP(pred.settled == "", HTTPStatus.badRequest, "Cannot buy shares of settled predictions");
     auto userId = req.session.get!int("userId");
     auto user = db.getUser(userId);
     auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
