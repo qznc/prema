@@ -28,7 +28,7 @@ block body
 			th closes
 			td
 				time(datetime="#{pred.closes}") #{pred.closes}
-		- if (pred.settled != "")
+		- if (settled)
 			tr
 				th settled
 				td
