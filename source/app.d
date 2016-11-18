@@ -89,6 +89,7 @@ void renderPrediction(model.prediction pred, database db, string[] errors,
     bool can_settle = userId == creator.id;
     auto closed = now > SysTime.fromISOExtString(pred.closes);
     auto settled = pred.settled != "";
+    logInfo("settled: "~text(settled)~" p/"~text(pred.id));
     auto pred_changes = db.getPredChanges(pred);
     string pageTitle = pred.statement;
     res.render!("prediction.dt", pageTitle, pred, creator, closed, settled,
