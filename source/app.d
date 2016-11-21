@@ -194,7 +194,7 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
         {
             db.cashBonus(user, credits(20), "Bonus is given every three days if you create a prediction.");
         } else {
-            logInfo("no cash bonus for "~text(user)~" because diff="~text(diff.total!"hours")~"h");
+            logInfo("no create cash bonus for "~text(user.id)~" because diff="~text(diff.total!"hours")~"h");
         }
         res.redirect("/");
     }
@@ -246,7 +246,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         {
             db.cashBonus(user, credits(5), "Bonus is given once per day if you order something.");
         } else {
-            logInfo("no cash bonus for "~text(user)~" because diff="~text(diff.total!"hours")~"h");
+            logInfo("no buy cash bonus for "~text(user.id)~" because diff="~text(diff.total!"hours")~"h");
         }
         res.redirect(req.path);
     }
