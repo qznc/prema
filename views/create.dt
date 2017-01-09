@@ -18,13 +18,13 @@ block body
 			|= "."
 		p
 			button Create
-		p You pay tax up front for creating this prediction. Upon settlement you might get some of the tax back. The more wrong the market is, the more you get back. It might even by a net win, if the market is on the wrong side of 50%.loss
+		p You pay tax up front for creating this prediction. Upon settlement you might get some of the tax back. The more wrong the market is, the more you get back. It might even by a net win, if the market is on the wrong side of 50%. Usually you lose most of it, though.
 		p Some advice for predictions:
 		ul
 			li Predictions start at 50%. Try to design them accordingly.
 			li If 50% does not match your belief, trade immediately after creation.
-			li The prediction should close <em>before</em> the outcome is known. If chance approximates 100% or 0% you maximize your settlement cost.
-			li After close, you have to decide between true and false, so phrase your predictions very concretely.
+			li The prediction should close <em>before</em> the outcome is known. If chance approximates 100% or 0% you minimize your tax payback.
+			li After the close, you <em>must</em> decide between true and false, so phrase your predictions very concretely.
 			li Avoid predictions where settlement is subjective.
 			li Phrase predictions positively, which means without 'not'. Betting against is just as profitable.
 
