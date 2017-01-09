@@ -88,7 +88,10 @@ block body
 		  return raw_data;
 		}
 		function drawChart() {
-		  var data = google.visualization.arrayToDataTable(getData());
+		  var data = getData();
+		  if (data.length <= 1) /* no data */
+			return;
+		  var data = google.visualization.arrayToDataTable(data);
 		  var options = {
 		    title: 'History of Chance',
 		    legend: 'none',
