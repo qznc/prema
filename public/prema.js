@@ -89,6 +89,7 @@
 		if (!b) return; // cannot create predictions on this page
 		var max_loss = document.getElementById("max_loss");
 		var b_txt = document.getElementById("b_txt");
+		if (!b_txt) return; // cannot change b on this page
 		function doUpdate() {
 			var amount = parseInt(b.value);
 			b_txt.innerHTML = b.value;
