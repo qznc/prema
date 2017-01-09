@@ -542,17 +542,16 @@ struct database
            which means to balance shares such that yes==no. */
         {
             auto amount = abs(pred.yes_shares - pred.no_shares);
+            /* even if amount == 0, we must process the payback */
+            auto t = pred.yes_shares < pred.no_shares ? share_type.yes : share_type.no;
+            auto price = pred.cost(amount, t);
             if (amount > 0)
-            {
-                auto t = pred.yes_shares < pred.no_shares ? share_type.yes : share_type.no;
-                auto price = pred.cost(amount, t);
                 transferShares(pred.creator, pred.id, amount, t);
-                /* due to prepay, creator gets some money back */
-                auto max_loss = credits(pred.b * log(2));
-                auto payback = max_loss - price;
-                if (payback != credits(0))
-                    transferMoney(MARKETS_ID, pred.creator, payback, pred.id, share_type.balance);
-            }
+            /* due to prepay, creator gets some money back */
+            auto max_loss = credits(pred.b * log(2));
+            auto payback = max_loss - price;
+            if (payback != credits(0))
+                transferMoney(MARKETS_ID, pred.creator, payback, pred.id, share_type.balance);
         }
         /* payout */
         {
