@@ -15,7 +15,6 @@
 		{
 			"name": "application",
 			"targetType": "executable",
-			"versions": ["VibeDefaultMain"],
 		}
 	]
 }
