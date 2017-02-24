@@ -556,7 +556,7 @@ struct database
         /* payout */
         {
             auto query = db.prepare(
-                "SELECT user, SUM(share_count) FROM orders WHERE prediction=? AND yes_order=?;");
+                "SELECT user, SUM(share_count) FROM orders WHERE prediction=? AND yes_order=? GROUP BY user;");
             query.bind(1, pred.id);
             query.bind(2, result ? 1 : 2);
             int[int] shares;
