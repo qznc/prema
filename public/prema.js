@@ -75,7 +75,8 @@
 				price.innerHTML = "too much";
 				price.className = "too_much";
 			} else {
-				price.innerHTML = roundDigits(cost,3)+"¢";
+				var tax = Math.abs(cost*0.01);
+				price.innerHTML = roundDigits(cost,3)+"¢ (+"+roundDigits(tax,3)+"¢ tax)";
 				price.className = "";
 			}
 		}
