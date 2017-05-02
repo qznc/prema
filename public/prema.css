@@ -37,6 +37,8 @@ a:hover { text-decoration: none; }
 p.no_preds,
 li time { color: #155764; }
 
+.predictions li { list-style-type: none; }
+
 /** POSITION & SIZE **/
 
 body { width: 40em; margin: 0 auto; position: relative; }
@@ -60,6 +62,7 @@ table.highscore td,
 table.pred_info td,
 #raw_history td { padding-left: 1em; }
 
+.predictions a,
 article li time { margin-left: 1em; }
 
 .error { padding: .5em 1em; }
