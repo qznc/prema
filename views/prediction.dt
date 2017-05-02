@@ -21,9 +21,9 @@ block body
 			th created
 			td
 				time(datetime="#{pred.created}") #{pred.created}
-				| by
+				|  by 
 				a(href="/u/#{creator.id}") #{creator.name}
-				| with b=<span id="b">#{pred.b}</span>.
+				|  with b=<span id="b">#{pred.b}</span>.
 		tr
 			th closes
 			td
@@ -63,9 +63,9 @@ block body
 				| or
 				button(name="settlement", value="false") Settle as False
 	- else if (closed && !settled && !can_settle)
-		p You have to wait for the creator
+		p You have to wait for the creator 
 			a(href="/u/#{creator.id}") #{creator.name}
-			| to settle this.
+			|  to settle this.
 	- if (closed && settled)
 		p Prediction is settled as "#{pred.result}".
 	div(id="chance_history")
