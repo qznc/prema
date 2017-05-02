@@ -233,7 +233,8 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
     if (count + amount < 0)
         errors ~= "You only have " ~ text(count) ~ " shares.";
     auto price = pred.cost(amount, type);
-    auto tax = millicredits(price.amount * 1 / 100);
+    import std.math : abs;
+    auto tax = millicredits(abs(price.amount * 1 / 100));
     auto full_price = millicredits(price.amount + tax.amount);
     auto cash = db.getCash(user.id);
     if (cash < full_price)
