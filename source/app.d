@@ -233,13 +233,19 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
     if (count + amount < 0)
         errors ~= "You only have " ~ text(count) ~ " shares.";
     auto price = pred.cost(amount, type);
+    auto tax = millicredits(price.amount * 1 / 100);
+    auto full_price = millicredits(price.amount + tax.amount);
     auto cash = db.getCash(user.id);
-    if (cash < price)
-        errors ~= "That would have cost " ~ text(price) ~ ", but you only have " ~ text(cash) ~ ".";
+    if (cash < full_price)
+        errors ~= "That would have cost " ~ text(price+tax) ~ ", but you only have " ~ text(cash) ~ ".";
     if (errors.empty)
     {
         auto last = db.lastTransactionDateBy(user);
         db.buy(user.id, id, amount, type, price);
+        if (user.id != pred.creator) {
+            logInfo("tax "~text(tax)~" from "~text(user)~" to "~text(pred.creator));
+            db.transferMoney(user.id, pred.creator, tax, pred.id, share_type.tax);
+        }
         auto now = Clock.currTime.toUTC;
         auto diff = now - last;
         if (diff.total!"hours" >= 23)
@@ -404,7 +410,7 @@ There are various predictions listed in the overview.
 Pick one.
 Then buy 'yes' or 'no' shares depending on
 whether you think the prediction will turn out true or false.
-One share costs at most 1.00¢.
+One share costs at most 1.00¢ plus 1% tax.
 How much exactly depends on the market.
 When the prediction is closed and settled,
 you get 1.00¢ for each correct share.
@@ -423,11 +429,13 @@ You can sell shares by 'buying' negative amounts.
 
 You can [create your own predictions](/create)
 and everybody can then trade on them.
+If others buy shares on your prediction you get the tax.
 Note that the creator of a prediction has to balance the market,
 when it is settled.
 So you might lose some money by creating predictions.
 You might also win some,
-if most traders are wrong.
+if most traders are wrong
+or you get enough taxes.
 This also means,
 the creator does not gain or lose any money,
 if nobody else trades on a prediction.

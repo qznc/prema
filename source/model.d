@@ -16,6 +16,7 @@ enum share_type
     yes = 1,
     no = 2,
     balance = 3,
+    tax = 4,
 }
 
 share_type fromInt(int n)
@@ -108,7 +109,7 @@ void init_empty_db(Database db)
 		receiver INTEGER, /* userid */
 		amount INTEGER,
 		prediction INTEGER, /* which prediction? */
-		yes_order INTEGER, /* what was bought 0=neither, 1=yes, 2=no */
+		yes_order INTEGER, /* what was bought; see share_type */
 		date TEXT NOT NULL /* ISO8601 date */
 		);");
     db.execute("CREATE TABLE messages (
@@ -377,7 +378,7 @@ struct database
         q.execute();
     }
 
-    private void transferMoney(int sender, int receiver, millicredits amount,
+    public void transferMoney(int sender, int receiver, millicredits amount,
         int predid, share_type t)
     {
         auto now = Clock.currTime.toUTC.toISOExtString;
