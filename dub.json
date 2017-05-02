@@ -11,6 +11,7 @@
 	"subConfigurations": {
 		"d2sqlite3": "all-included"
 	},
+	"versions": ["VibeDefaultMain"],
 	"configurations": [
 		{
 			"name": "application",
