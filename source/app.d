@@ -244,7 +244,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         auto last = db.lastTransactionDateBy(user);
         db.buy(user.id, id, amount, type, price);
         if (user.id != pred.creator) {
-            logInfo("tax "~text(tax)~" from "~text(user)~" to "~text(pred.creator));
+            logInfo("tax "~text(tax)~" from "~text(user.id)~" to "~text(pred.creator));
             db.transferMoney(user.id, pred.creator, tax, pred.id, share_type.tax);
         }
         auto now = Clock.currTime.toUTC;
