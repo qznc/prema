@@ -190,9 +190,9 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
         auto last = db.lastPredCreateDateBy(user);
         db.createPrediction(b_parsed, pred, end_parsed, user);
         auto diff = now - last;
-        if (diff.total!"hours" >= 24*2 + 23)
+        if (diff.total!"hours" >= 24*6 + 23)
         {
-            db.cashBonus(user, credits(20), "Bonus is given every three days if you create a prediction.");
+            db.cashBonus(user, credits(5), "Bonus is given every week if you create a prediction.");
         } else {
             logInfo("no create cash bonus for "~text(user.id)~" because diff="~text(diff.total!"hours")~"h");
         }
@@ -251,7 +251,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         auto diff = now - last;
         if (diff.total!"hours" >= 23)
         {
-            db.cashBonus(user, credits(5), "Bonus is given once per day if you order something.");
+            db.cashBonus(user, credits(1), "Bonus is given every days if you buy or sell something.");
         } else {
             logInfo("no buy cash bonus for "~text(user.id)~" because diff="~text(diff.total!"hours")~"h");
         }
