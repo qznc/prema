@@ -9,8 +9,8 @@ html
 		meta(name='generator', content='vibed.org')
 		meta(name='viewport', content='width=device-width, initial-scale=1')
 		link(rel='shortcut icon', href='/static/favicon.ico')
-		link(rel='stylesheet', type='text/css', href='/static/normalize.css')
-		link(rel='stylesheet', type='text/css', href='/static/prema.css')
+		link(rel='stylesheet', type='text/css', href='/static/normalize.css?#{VER}')
+		link(rel='stylesheet', type='text/css', href='/static/prema.css?#{VER}')
 	body
 		header
 			#githubLoginButton
@@ -71,4 +71,4 @@ html
 			p
 				a(href="/about") About
 				span(class="version") #{VER}
-		script(src='/static/prema.js')
+		script(src='/static/prema.js?#{VER}')
