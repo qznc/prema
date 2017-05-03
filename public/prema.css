@@ -52,6 +52,7 @@ article { margin: 1em 1em; max-width: 40em; }
 
 #githubLoginButton { float: right; margin-top: 1em; }
 
+.predictions .chance,
 table th { text-align: right; }
 
 ul, ol { padding-left: 0; }
@@ -64,6 +65,8 @@ table.pred_info td,
 
 .predictions a,
 article li time { margin-left: 1em; }
+
+.predictions .chance { float: left; width: 2.5em; }
 
 .error { padding: .5em 1em; }
 
