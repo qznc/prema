@@ -6,12 +6,13 @@ block body
 		- if (preds.empty)
 			p(class="no_preds") !{no_msg}
 		- else
-			ul(class="predictions")
+			table(class="predictions")
 				- foreach(i,pred; preds)
-					li
-						span(class="chance") #{round(pred.chance * 100)}%
-						a(href="/p/#{pred.id}") #{pred.statement}
-						time(datetime="#{pred.closes}", class="end") #{pred.closes}
+					tr
+						td(class="chance") #{round(pred.chance * 100)}%
+						td
+							a(href="/p/#{pred.id}") #{pred.statement}
+							time(datetime="#{pred.closes}", class="end") #{pred.closes}
 	h2 Active Predictions
 	- predList(active, "No active predictions. <a href=\"/create\">Create some</a>!");
 	h2 Predictions to Settle
