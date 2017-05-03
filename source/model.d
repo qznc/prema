@@ -483,7 +483,7 @@ struct database
     {
         order[] ret;
         auto query = db.prepare(
-            "SELECT prediction, share_count, yes_order, date FROM orders ORDER BY date DESC LIMIT 10;");
+            "SELECT prediction, share_count, yes_order, date FROM orders ORDER BY date DESC LIMIT 20;");
         foreach (row; query.execute())
         {
             auto predid = row.peek!int(0);
