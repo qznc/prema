@@ -18,7 +18,7 @@ block body
 			|= "."
 		p
 			button Create
-		p You pay tax up front for creating this prediction. Upon settlement you might get some of the tax back. The more wrong the market is, the more you get back. It might even by a net win, if the market is on the wrong side of 50%. Usually you lose most of it, though.
+		p You make a deposit up front for creating this prediction. Upon settlement you might get some of the deposit back. The more wrong the market is, the more you get back. It might even by a net win, if the market is on the wrong side of 50%. Usually you lose most of it, though. You also get taxes, when people buy or sell shares in your markets, so create markets which get a lot of action to become rich.
 		p Some advice for predictions:
 		ul
 			li Predictions start at 50%. Try to design them accordingly.
