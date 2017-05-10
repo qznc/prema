@@ -10,6 +10,18 @@ import std.datetime : Clock, SysTime, dur;
 import std.exception : enforce;
 import std.file : exists;
 
+class NoSuchPrediction : Exception {
+    public this(int pid) {
+        super("Prediction "~text(pid)~" does not exist");
+    }
+}
+
+class NoSuchUser : Exception {
+    public this(int uid) {
+        super("User "~text(uid)~" does not exist");
+    }
+}
+
 enum share_type
 {
     init = 0,
@@ -143,7 +155,7 @@ struct database
             auto email = row.peek!string(1);
             return user(id, name, email);
         }
-        throw new Exception("User " ~ text(id) ~ " does not exist.");
+        throw new NoSuchUser(id);
     }
 
     user getUser(string nick)
@@ -226,7 +238,7 @@ struct database
         {
             return parsePredictionQueryRow(row);
         }
-        throw new Exception("Prediction " ~ text(id) ~ " does not exist.");
+        throw new NoSuchPrediction(id);
     }
 
     private user[] users()

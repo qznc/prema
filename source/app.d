@@ -101,9 +101,17 @@ void prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
     auto id = to!int(req.params["predID"]);
     auto db = getDatabase();
-    auto pred = db.getPrediction(id);
-    string[] errors;
-    renderPrediction(pred, db, errors, req, res);
+    try {
+        auto pred = db.getPrediction(id);
+        string[] errors;
+        renderPrediction(pred, db, errors, req, res);
+    } catch (NoSuchPrediction e) {
+        logInfo("no prediction "~text(id));
+        auto pageTitle = "No such prediction";
+        auto text = "Sorry. Prediction "~text(id)~" does not exist.";
+        res.statusCode = HTTPStatus.badRequest;
+        res.render!("plain.dt", pageTitle, text, req);
+    }
 }
 
 void feed_predictions(HTTPServerRequest req, HTTPServerResponse res)
@@ -292,12 +300,20 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 {
     auto id = to!int(req.params["userID"]);
     auto db = getDatabase();
-    auto user = db.getUser(id);
-    string pageTitle = user.name;
-    auto cash = db.getCash(id);
-    auto predsActive = db.usersActivePredictions(id);
-    auto predsClosed = db.usersClosedPredictions(id);
-    res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
+    try {
+        auto user = db.getUser(id);
+        string pageTitle = user.name;
+        auto cash = db.getCash(id);
+        auto predsActive = db.usersActivePredictions(id);
+        auto predsClosed = db.usersClosedPredictions(id);
+        res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
+    } catch (NoSuchUser e) {
+        logInfo("no user "~text(id));
+        auto pageTitle = "No such user";
+        auto text = "Sorry. User "~text(id)~" does not exist.";
+        res.statusCode = HTTPStatus.badRequest;
+        res.render!("plain.dt", pageTitle, text, req);
+    }
 }
 
 /* Github Auth 1: Send user to Github */
