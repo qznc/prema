@@ -1,4 +1,5 @@
 - import std.math : round;
+- import std.range : empty;
 - import git_version : VER;
 - import model : getDatabase;
 - auto db = getDatabase();
