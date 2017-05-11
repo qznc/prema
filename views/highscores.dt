@@ -6,7 +6,8 @@ block body
 		- foreach (user; db.getUsersByCash)
 			- auto cash = db.getCash(user.id);
 			tr
-				td #{user.name}
+				td
+					a(href="/u/#{user.id}") #{user.name}
 				td #{cash}
 	h2 Most Settled Predictions
 	table(class="highscore")
@@ -14,5 +15,6 @@ block body
 			- auto pred_count = db.countSettled(user);
 			- if (pred_count == 0) continue;
 			tr
-				td #{user.name}
+				td
+					a(href="/u/#{user.id}") #{user.name}
 				td #{pred_count}
