@@ -12,11 +12,14 @@ import std.process : environment;
 static immutable host = "127.0.0.1";
 static immutable port = 8080;
 
+static immutable WEEKLY_TAX_RATE = 0.05;
+
 shared static this()
 {
     auto router = new URLRouter;
     // dfmt off
     router
+        .any("*", &weeklyTax)
         .get("/", &index)
         .get("/about", &about)
         .get("/highscores", &highscores)
@@ -253,7 +256,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         db.buy(user.id, id, amount, type, price);
         if (user.id != pred.creator) {
             logInfo("tax "~text(tax)~" from "~text(user.id)~" to "~text(pred.creator));
-            db.transferMoney(user.id, pred.creator, tax, pred.id, share_type.tax);
+            db.transferMoney(user.id, pred.creator, tax, pred.id, share_type.share_tax);
         }
         auto now = Clock.currTime.toUTC;
         auto diff = now - last;
@@ -470,4 +473,10 @@ In return, the public gets a more accurate forecast.
 	",
         MarkdownFlags.none);
     res.render!("plain.dt", pageTitle, text, req);
+}
+
+void weeklyTax(HTTPServerRequest req, HTTPServerResponse res)
+{
+    // TODO cache decision to avoid database accesses?
+    doWeeklyTax(WEEKLY_TAX_RATE);
 }

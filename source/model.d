@@ -25,10 +25,11 @@ class NoSuchUser : Exception {
 enum share_type
 {
     init = 0,
-    yes = 1,
-    no = 2,
-    balance = 3,
-    tax = 4,
+    yes = 1,        // buying or selling yes shares
+    no = 2,         // buying or selling no shares
+    balance = 3,    // paying or returning balance deposit
+    share_tax = 4,  // tax on buying and selling shares
+    weekly_tax = 5, // chronological tax for normalization
 }
 
 share_type fromInt(int n)
@@ -643,6 +644,17 @@ struct database
         query.bind(3, t);
         return query.execute().oneValue!int;
     }
+
+    auto lastWeeklyTax()
+    {
+        auto query = db.prepare(
+            "SELECT max(date) FROM transactions WHERE yes_order=?;");
+        query.bind(1, share_type.weekly_tax);
+        string date = query.execute().oneValue!string();
+        if (date == "")
+            return SysTime(0L);
+        return SysTime.fromISOExtString(date);
+    }
 }
 
 struct message
@@ -868,4 +880,44 @@ unittest
     assert(pred2.yes_shares == 0, text(pred2.yes_shares));
     assert(pred2.no_shares == 10, text(pred2.no_shares));
     auto price2 = pred2.cost(10, share_type.no);
+}
+
+immutable TAX_ABOVE = millicredits(900 * 1000);
+immutable UNTAX_BELOW = millicredits(500 * 1000);
+
+void doWeeklyTax(float weekly_tax_rate)
+{
+    import std.stdio;
+    auto db = getDatabase();
+    auto last = db.lastWeeklyTax();
+    SysTime now = Clock.currTime.toUTC;
+    auto time_diff = now - last;
+    // If less than a week, no taxes are due
+    if (time_diff < dur!"days"(7))
+        return;
+    // Initially account for one week
+    if (last == SysTime(0L))
+        time_diff = dur!"weeks"(1);
+    auto weeks = time_diff.total!"weeks";
+    writeln("doWeeklyTax for weeks: ", weeks);
+    foreach (user; db.users) {
+        auto cash = db.getCash(user.id);
+        if (cash > TAX_ABOVE) {
+            auto taxable = cash - TAX_ABOVE;
+            auto deduct = millicredits(cast(long)(taxable.amount * weekly_tax_rate));
+            db.transferMoney(user.id, FUNDER_ID, deduct, 0, share_type.weekly_tax);
+            string msg = "You paid "~text(deduct);
+            if (weeks > 1)
+                msg ~= " for "~text(weeks)~" weeks";
+            db.messageTo(user, "Weekly Taxes: "~text(deduct), msg);
+        } else if (cash < UNTAX_BELOW) {
+            auto taxable = UNTAX_BELOW - cash;
+            auto win = millicredits(cast(long)(taxable.amount * weekly_tax_rate));
+            db.transferMoney(FUNDER_ID, user.id, win, 0, share_type.weekly_tax);
+            string msg = "You received "~text(win);
+            if (weeks > 1)
+                msg ~= " for "~text(weeks)~" weeks";
+            db.messageTo(user, "Weekly Negative Tax: "~text(win), msg);
+        }
+    }
 }
