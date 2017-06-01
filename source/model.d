@@ -573,7 +573,8 @@ struct database
             auto max_loss = credits(pred.b * log(2));
             auto payback = max_loss - price;
             if (payback != credits(0))
-                transferMoney(MARKETS_ID, pred.creator, payback, pred.id, transaction_type.balance);
+                transferMoney(MARKETS_ID, pred.creator, payback, pred.id,
+                        transaction_type.balance);
         }
         /* payout */
         {
@@ -587,7 +588,8 @@ struct database
                 auto userid = row.peek!int(0);
                 auto amount = row.peek!int(1);
                 writeln("order " ~ text(amount) ~ " shares for " ~ text(userid));
-                transferMoney(MARKETS_ID, userid, credits(amount), pred.id, transaction_type.balance);
+                transferMoney(MARKETS_ID, userid, credits(amount), pred.id,
+                        transaction_type.balance);
             }
         }
         db.execute("END TRANSACTION;");
@@ -889,7 +891,7 @@ unittest
     auto price2 = pred2.cost(10, transaction_type.no);
 }
 
-immutable TAX_ABOVE   = millicredits(900 * 1000);
+immutable TAX_ABOVE = millicredits(900 * 1000);
 immutable UNTAX_BELOW = millicredits(500 * 1000);
 
 private millicredits computeTax(const millicredits cash, real weekly_tax_rate, long weeks)
@@ -898,7 +900,8 @@ private millicredits computeTax(const millicredits cash, real weekly_tax_rate, l
     if (cash > TAX_ABOVE)
     {
         long total = 0;
-        foreach(_; 0..weeks) {
+        foreach (_; 0 .. weeks)
+        {
             auto taxable = c - TAX_ABOVE.amount;
             auto deduct = (cast(long)(taxable * weekly_tax_rate));
             total += deduct;
@@ -909,7 +912,8 @@ private millicredits computeTax(const millicredits cash, real weekly_tax_rate, l
     else if (cash < UNTAX_BELOW)
     {
         long total = 0;
-        foreach(_; 0..weeks) {
+        foreach (_; 0 .. weeks)
+        {
             auto taxable = UNTAX_BELOW.amount - c;
             auto deduct = (cast(long)(taxable * weekly_tax_rate));
             total += deduct;
@@ -920,7 +924,8 @@ private millicredits computeTax(const millicredits cash, real weekly_tax_rate, l
     return millicredits(0);
 }
 
-unittest {
+unittest
+{
     // You pay no taxes between 500 and 900
     assert(computeTax(credits(900.0), 0.05, 1) == credits(0.0));
     assert(computeTax(credits(500.0), 0.05, 1) == credits(0.0));
@@ -935,10 +940,10 @@ unittest {
     assert(computeTax(credits(2000.0), 0.05, 52) == credits(1023.604));
 
     // With less than 500 you receive taxes
-    assert(computeTax(credits( 100.0), 0.05, 1) == credits(20));
-    assert(computeTax(credits( 400.0), 0.05, 1) == credits(5));
-    assert(computeTax(credits( 10.0), 0.05, 1) == credits(24.5));
-    assert(computeTax(credits( 10.0), 0.05, 52) == credits(455.963));
+    assert(computeTax(credits(100.0), 0.05, 1) == credits(20));
+    assert(computeTax(credits(400.0), 0.05, 1) == credits(5));
+    assert(computeTax(credits(10.0), 0.05, 1) == credits(24.5));
+    assert(computeTax(credits(10.0), 0.05, 52) == credits(455.963));
 }
 
 void doWeeklyTax(real weekly_tax_rate)
@@ -972,7 +977,8 @@ void doWeeklyTax(real weekly_tax_rate)
         {
             auto win = computeTax(cash, weekly_tax_rate, weeks);
             db.transferMoney(FUNDER_ID, user.id, win, 0, transaction_type.weekly_tax);
-            string msg = "You received " ~ text(percentage) ~ "% of " ~ text(TAX_ABOVE) ~ " minus your cash";
+            string msg = "You received " ~ text(percentage) ~ "% of " ~ text(
+                    TAX_ABOVE) ~ " minus your cash";
             if (weeks > 1)
                 msg ~= " over " ~ text(weeks) ~ " weeks";
             db.messageTo(user, "Weekly Negative Taxes: " ~ text(win), msg);
