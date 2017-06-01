@@ -85,8 +85,8 @@ void renderPrediction(model.prediction pred, database db, string[] errors,
     {
         userId = req.session.get!int("userId");
         auto user = db.getUser(userId);
-        your_yes_shares = db.countPredShares(pred, user, share_type.yes);
-        your_no_shares = db.countPredShares(pred, user, share_type.no);
+        your_yes_shares = db.countPredShares(pred, user, transaction_type.yes);
+        your_no_shares = db.countPredShares(pred, user, transaction_type.no);
         predStats = db.getUsersPredStats(user.id, pred.id);
     }
     bool can_settle = userId == creator.id;
@@ -246,7 +246,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
             "Cannot buy shares of settled predictions");
     auto userId = req.session.get!int("userId");
     auto user = db.getUser(userId);
-    auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
+    auto type = req.form["type"] == "yes" ? transaction_type.yes : transaction_type.no;
     auto count = db.countPredShares(pred, user, type);
     if (count + amount < 0)
         errors ~= "You only have " ~ text(count) ~ " shares.";
@@ -266,7 +266,7 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         if (user.id != pred.creator)
         {
             logInfo("tax " ~ text(tax) ~ " from " ~ text(user.id) ~ " to " ~ text(pred.creator));
-            db.transferMoney(user.id, pred.creator, tax, pred.id, share_type.share_tax);
+            db.transferMoney(user.id, pred.creator, tax, pred.id, transaction_type.share_tax);
         }
         auto now = Clock.currTime.toUTC;
         auto diff = now - last;

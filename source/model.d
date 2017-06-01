@@ -26,7 +26,7 @@ class NoSuchUser : Exception
     }
 }
 
-enum share_type
+enum transaction_type
 {
     init = 0,
     yes = 1, // buying or selling yes shares
@@ -36,16 +36,16 @@ enum share_type
     weekly_tax = 5, // chronological tax for normalization
 }
 
-share_type fromInt(int n)
+transaction_type fromInt(int n)
 {
     switch (n)
     {
     case 1:
-        return share_type.yes;
+        return transaction_type.yes;
     case 2:
-        return share_type.no;
+        return transaction_type.no;
     default:
-        return share_type.balance;
+        return transaction_type.balance;
     }
 }
 
@@ -126,7 +126,7 @@ void init_empty_db(Database db)
 		receiver INTEGER, /* userid */
 		amount INTEGER,
 		prediction INTEGER, /* which prediction? */
-		yes_order INTEGER, /* what was bought; see share_type */
+		yes_order INTEGER, /* what was bought; see transaction_type */
 		date TEXT NOT NULL /* ISO8601 date */
 		);");
     db.execute("CREATE TABLE messages (
@@ -187,7 +187,7 @@ struct database
         q.bind(2, email);
         q.execute();
         auto user = getUser(nick);
-        transferMoney(FUNDER_ID, user.id, credits(1000), 0, share_type.init);
+        transferMoney(FUNDER_ID, user.id, credits(1000), 0, transaction_type.init);
         messageTo(user, "Welcome!",
                 "Hello to Prema. Have fun betting! Questions? <a href=\"/about\">Answers</a>.");
         db.execute("END TRANSACTION;");
@@ -202,6 +202,7 @@ struct database
         q.bind(3, msg);
         q.execute();
         writeln("msg to " ~ text(receiver.id) ~ ": " ~ title);
+        writeln(msg);
     }
 
     auto getUnseenMessages(int userid)
@@ -229,7 +230,7 @@ struct database
     void cashBonus(user u, millicredits amount, string msg)
     {
         db.execute("BEGIN TRANSACTION;");
-        transferMoney(FUNDER_ID, u.id, amount, 0, share_type.init);
+        transferMoney(FUNDER_ID, u.id, amount, 0, transaction_type.init);
         messageTo(u, "Cash Bonus: " ~ text(amount), msg);
         db.execute("END TRANSACTION;");
     }
@@ -320,8 +321,8 @@ struct database
         auto closes = row.peek!string(5);
         auto settled = row.peek!string(6);
         auto result = row.peek!string(7);
-        auto yes_shares = countPredShares(id, share_type.yes);
-        auto no_shares = countPredShares(id, share_type.no);
+        auto yes_shares = countPredShares(id, transaction_type.yes);
+        auto no_shares = countPredShares(id, transaction_type.no);
         return prediction(id, b, statement, creator, yes_shares, no_shares,
                 created, closes, settled, result);
     }
@@ -365,11 +366,11 @@ struct database
         auto pid = q.execute().oneValue!int;
         /* prepay the settlement tax */
         auto max_loss = credits(b * log(2));
-        transferMoney(creator.id, MARKETS_ID, max_loss, pid, share_type.init);
+        transferMoney(creator.id, MARKETS_ID, max_loss, pid, transaction_type.init);
         db.execute("END TRANSACTION;");
     }
 
-    void buy(int uid, int pid, int amount, share_type t, millicredits price)
+    void buy(int uid, int pid, int amount, transaction_type t, millicredits price)
     {
         db.execute("BEGIN TRANSACTION;");
         buyWithoutTransaction(uid, pid, amount, t, price);
@@ -377,14 +378,14 @@ struct database
     }
 
     private void buyWithoutTransaction(int uid, int pid, int amount,
-            share_type t, millicredits price)
+            transaction_type t, millicredits price)
     {
         enforce(getCash(uid) >= price, "not enough cash");
         transferShares(uid, pid, amount, t);
         transferMoney(uid, MARKETS_ID, price, pid, t);
     }
 
-    private void transferShares(int uid, int pid, int amount, share_type t)
+    private void transferShares(int uid, int pid, int amount, transaction_type t)
     {
         auto now = Clock.currTime.toUTC.toISOExtString;
         auto q = db.prepare("INSERT INTO orders VALUES (NULL, ?, ?, ?, ?, ?);");
@@ -397,7 +398,7 @@ struct database
     }
 
     public void transferMoney(int sender, int receiver, millicredits amount,
-            int predid, share_type t)
+            int predid, transaction_type t)
     {
         auto now = Clock.currTime.toUTC.toISOExtString;
         auto q = db.prepare("INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, ?);");
@@ -416,7 +417,7 @@ struct database
         auto q = db.prepare(
                 "SELECT date FROM transactions WHERE receiver=? AND yes_order=? ORDER BY date DESC LIMIT 1;");
         q.bind(1, u.id);
-        q.bind(1, share_type.init);
+        q.bind(1, transaction_type.init);
         foreach (row; q.execute())
         {
             auto date = row.peek!string(0);
@@ -531,12 +532,12 @@ struct database
             query.bind(3, 2);
             ret.no_shares = query.execute().oneValue!int;
         }
-        ret.yes_price = getInvestment(userid, predid, share_type.yes);
-        ret.no_price = getInvestment(userid, predid, share_type.no);
+        ret.yes_price = getInvestment(userid, predid, transaction_type.yes);
+        ret.no_price = getInvestment(userid, predid, transaction_type.no);
         return ret;
     }
 
-    private millicredits getInvestment(int userid, int predid, share_type t)
+    private millicredits getInvestment(int userid, int predid, transaction_type t)
     {
         auto query = db.prepare(
                 "SELECT SUM(amount) FROM transactions WHERE prediction=? AND sender=? AND yes_order=?;");
@@ -564,7 +565,7 @@ struct database
         {
             auto amount = abs(pred.yes_shares - pred.no_shares);
             /* even if amount == 0, we must process the payback */
-            auto t = pred.yes_shares < pred.no_shares ? share_type.yes : share_type.no;
+            auto t = pred.yes_shares < pred.no_shares ? transaction_type.yes : transaction_type.no;
             auto price = pred.cost(amount, t);
             if (amount > 0)
                 transferShares(pred.creator, pred.id, amount, t);
@@ -572,7 +573,7 @@ struct database
             auto max_loss = credits(pred.b * log(2));
             auto payback = max_loss - price;
             if (payback != credits(0))
-                transferMoney(MARKETS_ID, pred.creator, payback, pred.id, share_type.balance);
+                transferMoney(MARKETS_ID, pred.creator, payback, pred.id, transaction_type.balance);
         }
         /* payout */
         {
@@ -586,7 +587,7 @@ struct database
                 auto userid = row.peek!int(0);
                 auto amount = row.peek!int(1);
                 writeln("order " ~ text(amount) ~ " shares for " ~ text(userid));
-                transferMoney(MARKETS_ID, userid, credits(amount), pred.id, share_type.balance);
+                transferMoney(MARKETS_ID, userid, credits(amount), pred.id, transaction_type.balance);
             }
         }
         db.execute("END TRANSACTION;");
@@ -595,7 +596,7 @@ struct database
     chance_change[] getPredChanges(prediction pred)
     {
         chance_change[] changes;
-        changes ~= chance_change(pred.created, 0.5, 0, share_type.balance);
+        changes ~= chance_change(pred.created, 0.5, 0, transaction_type.balance);
         auto query = db.prepare(
                 "SELECT share_count, yes_order, date FROM orders WHERE prediction=? ORDER BY date;");
         query.bind(1, pred.id);
@@ -604,17 +605,17 @@ struct database
         {
             auto amount = row.peek!int(0);
             auto y = row.peek!int(1);
-            share_type type;
+            transaction_type type;
             auto date = row.peek!string(2);
             if (y == 1)
             {
-                type = share_type.yes;
+                type = transaction_type.yes;
                 yes_shares += amount;
             }
             else
             {
                 assert(y == 2);
-                type = share_type.no;
+                type = transaction_type.no;
                 no_shares += amount;
             }
             auto chance = LMSR_chance(pred.b, yes_shares, no_shares);
@@ -628,12 +629,12 @@ struct database
         return changes;
     }
 
-    private int countPredShares(prediction pred, share_type t)
+    private int countPredShares(prediction pred, transaction_type t)
     {
         return countPredShares(pred.id, t);
     }
 
-    private int countPredShares(int predid, share_type t)
+    private int countPredShares(int predid, transaction_type t)
     {
         auto query = db.prepare(
                 "SELECT SUM(share_count), yes_order FROM orders WHERE prediction=? AND yes_order=? ORDER BY date;");
@@ -642,7 +643,7 @@ struct database
         return query.execute().oneValue!int();
     }
 
-    int countPredShares(prediction pred, user u, share_type t)
+    int countPredShares(prediction pred, user u, transaction_type t)
     {
         auto query = db.prepare(
                 "SELECT SUM(share_count) FROM orders WHERE prediction=? AND user=? AND yes_order=?;");
@@ -655,7 +656,7 @@ struct database
     auto lastWeeklyTax()
     {
         auto query = db.prepare("SELECT max(date) FROM transactions WHERE yes_order=?;");
-        query.bind(1, share_type.weekly_tax);
+        query.bind(1, transaction_type.weekly_tax);
         string date = query.execute().oneValue!string();
         if (date == "")
             return SysTime(0L);
@@ -680,7 +681,7 @@ struct predStats
 struct order
 {
     int predid, share_count;
-    share_type type;
+    transaction_type type;
     string date;
 }
 
@@ -689,7 +690,7 @@ struct chance_change
     string date;
     real chance;
     int shares;
-    share_type type;
+    transaction_type type;
 }
 
 struct prediction
@@ -706,16 +707,16 @@ struct prediction
     }
 
     /* cost of buying a certain amount of shares */
-    millicredits cost(int amount, share_type t) const
+    millicredits cost(int amount, transaction_type t) const
     {
-        if (t == share_type.yes)
+        if (t == transaction_type.yes)
         {
             auto c = LMSR_cost(b, yes_shares, no_shares, amount);
             return millicredits(to!long(1000.0 * c));
         }
         else
         {
-            assert(t == share_type.no);
+            assert(t == transaction_type.no);
             auto c = LMSR_cost(b, no_shares, yes_shares, amount);
             return millicredits(to!long(1000.0 * c));
         }
@@ -873,19 +874,19 @@ unittest
     assert(pred.yes_shares == 0, text(pred.yes_shares));
     assert(pred.no_shares == 0, text(pred.no_shares));
     assert_roughly(pred.chance, 0.5);
-    auto price = pred.cost(10, share_type.no);
-    assert(pred.cost(10, share_type.yes) == price);
-    db.buy(admin.id, pred.id, 10, share_type.no, price);
+    auto price = pred.cost(10, transaction_type.no);
+    assert(pred.cost(10, transaction_type.yes) == price);
+    db.buy(admin.id, pred.id, 10, transaction_type.no, price);
 
     auto pred2 = db.getPrediction(1);
-    assert(pred2.cost(10, share_type.no) > price, text(pred2.cost(10,
-            share_type.no)) ~ " !> " ~ text(price));
+    assert(pred2.cost(10, transaction_type.no) > price, text(pred2.cost(10,
+            transaction_type.no)) ~ " !> " ~ text(price));
     /* check for database state */
     auto admin2 = db.getUser(user.id);
     auto pred22 = db.getPrediction(pred2.id);
     assert(pred2.yes_shares == 0, text(pred2.yes_shares));
     assert(pred2.no_shares == 10, text(pred2.no_shares));
-    auto price2 = pred2.cost(10, share_type.no);
+    auto price2 = pred2.cost(10, transaction_type.no);
 }
 
 immutable TAX_ABOVE   = millicredits(900 * 1000);
@@ -961,7 +962,7 @@ void doWeeklyTax(real weekly_tax_rate)
         if (cash > TAX_ABOVE)
         {
             auto deduct = computeTax(cash, weekly_tax_rate, weeks);
-            db.transferMoney(user.id, FUNDER_ID, deduct, 0, share_type.weekly_tax);
+            db.transferMoney(user.id, FUNDER_ID, deduct, 0, transaction_type.weekly_tax);
             string msg = "You paid " ~ text(percentage) ~ "% of your cash minus " ~ text(TAX_ABOVE);
             if (weeks > 1)
                 msg ~= " over " ~ text(weeks) ~ " weeks";
@@ -970,7 +971,7 @@ void doWeeklyTax(real weekly_tax_rate)
         else if (cash < UNTAX_BELOW)
         {
             auto win = computeTax(cash, weekly_tax_rate, weeks);
-            db.transferMoney(FUNDER_ID, user.id, win, 0, share_type.weekly_tax);
+            db.transferMoney(FUNDER_ID, user.id, win, 0, transaction_type.weekly_tax);
             string msg = "You received " ~ text(percentage) ~ "% of " ~ text(TAX_ABOVE) ~ " minus your cash";
             if (weeks > 1)
                 msg ~= " over " ~ text(weeks) ~ " weeks";
