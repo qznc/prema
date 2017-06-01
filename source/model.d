@@ -888,8 +888,57 @@ unittest
     auto price2 = pred2.cost(10, share_type.no);
 }
 
-immutable TAX_ABOVE = millicredits(900 * 1000);
+immutable TAX_ABOVE   = millicredits(900 * 1000);
 immutable UNTAX_BELOW = millicredits(500 * 1000);
+
+private millicredits computeTax(const millicredits cash, real weekly_tax_rate, long weeks)
+{
+    long c = cash.amount;
+    if (cash > TAX_ABOVE)
+    {
+        long total = 0;
+        foreach(_; 0..weeks) {
+            auto taxable = c - TAX_ABOVE.amount;
+            auto deduct = (cast(long)(taxable * weekly_tax_rate));
+            total += deduct;
+            c -= deduct;
+        }
+        return millicredits(total);
+    }
+    else if (cash < UNTAX_BELOW)
+    {
+        long total = 0;
+        foreach(_; 0..weeks) {
+            auto taxable = UNTAX_BELOW.amount - c;
+            auto deduct = (cast(long)(taxable * weekly_tax_rate));
+            total += deduct;
+            c += deduct;
+        }
+        return millicredits(total);
+    }
+    return millicredits(0);
+}
+
+unittest {
+    // You pay no taxes between 500 and 900
+    assert(computeTax(credits(900.0), 0.05, 1) == credits(0.0));
+    assert(computeTax(credits(500.0), 0.05, 1) == credits(0.0));
+
+    // At 1000 you pay a little (5% of 1000 - 900)
+    assert(computeTax(credits(1000.0), 0.05, 1) == credits(5.0));
+    // At 2000 you pay significant taxes
+    assert(computeTax(credits(2000.0), 0.05, 1) == credits(55.0));
+    // After two weeks you pay more
+    assert(computeTax(credits(2000.0), 0.05, 2) == credits(107.25));
+    // After a year, you pay nearly everything down to the 900 flat
+    assert(computeTax(credits(2000.0), 0.05, 52) == credits(1023.604));
+
+    // With less than 500 you receive taxes
+    assert(computeTax(credits( 100.0), 0.05, 1) == credits(20));
+    assert(computeTax(credits( 400.0), 0.05, 1) == credits(5));
+    assert(computeTax(credits( 10.0), 0.05, 1) == credits(24.5));
+    assert(computeTax(credits( 10.0), 0.05, 52) == credits(455.963));
+}
 
 void doWeeklyTax(real weekly_tax_rate)
 {
@@ -911,23 +960,21 @@ void doWeeklyTax(real weekly_tax_rate)
         auto cash = db.getCash(user.id);
         if (cash > TAX_ABOVE)
         {
-            auto taxable = cash - TAX_ABOVE;
-            auto deduct = millicredits(cast(long)(taxable.amount * weekly_tax_rate));
+            auto deduct = computeTax(cash, weekly_tax_rate, weeks);
             db.transferMoney(user.id, FUNDER_ID, deduct, 0, share_type.weekly_tax);
-            string msg = "You paid " ~ text(percentage) ~ "% of " ~ text(taxable);
+            string msg = "You paid " ~ text(percentage) ~ "% of your cash minus " ~ text(TAX_ABOVE);
             if (weeks > 1)
-                msg ~= " for " ~ text(weeks) ~ " weeks";
+                msg ~= " over " ~ text(weeks) ~ " weeks";
             db.messageTo(user, "Weekly Taxes: " ~ text(deduct), msg);
         }
         else if (cash < UNTAX_BELOW)
         {
-            auto taxable = UNTAX_BELOW - cash;
-            auto win = millicredits(cast(long)(taxable.amount * weekly_tax_rate));
+            auto win = computeTax(cash, weekly_tax_rate, weeks);
             db.transferMoney(FUNDER_ID, user.id, win, 0, share_type.weekly_tax);
-            string msg = "You received " ~ text(percentage) ~ "% of " ~ text(taxable);
+            string msg = "You received " ~ text(percentage) ~ "% of " ~ text(TAX_ABOVE) ~ " minus your cash";
             if (weeks > 1)
-                msg ~= " for " ~ text(weeks) ~ " weeks";
-            db.messageTo(user, "Weekly Negative Tax: " ~ text(win), msg);
+                msg ~= " over " ~ text(weeks) ~ " weeks";
+            db.messageTo(user, "Weekly Negative Taxes: " ~ text(win), msg);
         }
     }
 }
