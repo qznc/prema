@@ -10,25 +10,29 @@ import std.datetime : Clock, SysTime, dur;
 import std.exception : enforce;
 import std.file : exists;
 
-class NoSuchPrediction : Exception {
-    public this(int pid) {
-        super("Prediction "~text(pid)~" does not exist");
+class NoSuchPrediction : Exception
+{
+    public this(int pid)
+    {
+        super("Prediction " ~ text(pid) ~ " does not exist");
     }
 }
 
-class NoSuchUser : Exception {
-    public this(int uid) {
-        super("User "~text(uid)~" does not exist");
+class NoSuchUser : Exception
+{
+    public this(int uid)
+    {
+        super("User " ~ text(uid) ~ " does not exist");
     }
 }
 
 enum share_type
 {
     init = 0,
-    yes = 1,        // buying or selling yes shares
-    no = 2,         // buying or selling no shares
-    balance = 3,    // paying or returning balance deposit
-    share_tax = 4,  // tax on buying and selling shares
+    yes = 1, // buying or selling yes shares
+    no = 2, // buying or selling no shares
+    balance = 3, // paying or returning balance deposit
+    share_tax = 4, // tax on buying and selling shares
     weekly_tax = 5, // chronological tax for normalization
 }
 
@@ -184,9 +188,8 @@ struct database
         q.execute();
         auto user = getUser(nick);
         transferMoney(FUNDER_ID, user.id, credits(1000), 0, share_type.init);
-        messageTo(user,
-            "Welcome!",
-            "Hello to Prema. Have fun betting! Questions? <a href=\"/about\">Answers</a>.");
+        messageTo(user, "Welcome!",
+                "Hello to Prema. Have fun betting! Questions? <a href=\"/about\">Answers</a>.");
         db.execute("END TRANSACTION;");
         return user;
     }
@@ -245,7 +248,7 @@ struct database
     private user[] users()
     {
         auto query = db.prepare(
-            "SELECT id,name,email FROM users WHERE id != ? AND id != ? ORDER BY id;");
+                "SELECT id,name,email FROM users WHERE id != ? AND id != ? ORDER BY id;");
         query.bind(1, MARKETS_ID);
         query.bind(2, FUNDER_ID);
         user[] result;
@@ -291,7 +294,7 @@ struct database
     {
         auto now = Clock.currTime.toUTC.toISOExtString;
         auto query = db.prepare(
-            "SELECT COUNT(id) FROM predictions WHERE creator=? AND (settled IS NOT NULL OR closes<?);");
+                "SELECT COUNT(id) FROM predictions WHERE creator=? AND (settled IS NOT NULL OR closes<?);");
         query.bind(1, u.id);
         query.bind(2, now);
         return query.execute().oneValue!int;
@@ -320,14 +323,15 @@ struct database
         auto yes_shares = countPredShares(id, share_type.yes);
         auto no_shares = countPredShares(id, share_type.no);
         return prediction(id, b, statement, creator, yes_shares, no_shares,
-            created, closes, settled, result);
+                created, closes, settled, result);
     }
 
     prediction[] activePredictions()
     {
         SysTime now = Clock.currTime.toUTC;
         auto query = db.prepare(
-            SQL_SELECT_PREDICTION_PREFIX ~ "WHERE closes > ? AND settled IS NULL ORDER BY closes;");
+                SQL_SELECT_PREDICTION_PREFIX
+                ~ "WHERE closes > ? AND settled IS NULL ORDER BY closes;");
         query.bind(1, now.toISOExtString());
         return parsePredictionQuery(query.execute());
     }
@@ -336,7 +340,8 @@ struct database
     {
         SysTime now = Clock.currTime.toUTC;
         auto query = db.prepare(
-            SQL_SELECT_PREDICTION_PREFIX ~ "WHERE closes < ? AND settled IS NULL ORDER BY closes;");
+                SQL_SELECT_PREDICTION_PREFIX
+                ~ "WHERE closes < ? AND settled IS NULL ORDER BY closes;");
         query.bind(1, now.toISOExtString());
         return parsePredictionQuery(query.execute());
     }
@@ -372,7 +377,7 @@ struct database
     }
 
     private void buyWithoutTransaction(int uid, int pid, int amount,
-        share_type t, millicredits price)
+            share_type t, millicredits price)
     {
         enforce(getCash(uid) >= price, "not enough cash");
         transferShares(uid, pid, amount, t);
@@ -392,7 +397,7 @@ struct database
     }
 
     public void transferMoney(int sender, int receiver, millicredits amount,
-        int predid, share_type t)
+            int predid, share_type t)
     {
         auto now = Clock.currTime.toUTC.toISOExtString;
         auto q = db.prepare("INSERT INTO transactions VALUES (NULL, ?, ?, ?, ?, ?, ?);");
@@ -408,7 +413,8 @@ struct database
     private auto lastBonusCash(user u)
     {
         SysTime t = Clock.currTime.toUTC;
-        auto q = db.prepare("SELECT date FROM transactions WHERE receiver=? AND yes_order=? ORDER BY date DESC LIMIT 1;");
+        auto q = db.prepare(
+                "SELECT date FROM transactions WHERE receiver=? AND yes_order=? ORDER BY date DESC LIMIT 1;");
         q.bind(1, u.id);
         q.bind(1, share_type.init);
         foreach (row; q.execute())
@@ -440,7 +446,8 @@ struct database
     {
         SysTime t = Clock.currTime.toUTC;
         auto last_bonus = lastBonusCash(u);
-        auto q = db.prepare("SELECT created FROM predictions WHERE creator=? ORDER BY created DESC LIMIT 1;");
+        auto q = db.prepare(
+                "SELECT created FROM predictions WHERE creator=? ORDER BY created DESC LIMIT 1;");
         q.bind(1, u.id);
         foreach (row; q.execute())
         {
@@ -468,7 +475,7 @@ struct database
     {
         SysTime now = Clock.currTime.toUTC;
         auto query = db.prepare(
-            SQL_SELECT_PREDICTION_PREFIX ~ "WHERE creator == ? AND closes > ? ORDER BY closes;");
+                SQL_SELECT_PREDICTION_PREFIX ~ "WHERE creator == ? AND closes > ? ORDER BY closes;");
         query.bind(1, userid);
         query.bind(2, now.toISOExtString());
         return parsePredictionQuery(query.execute());
@@ -478,7 +485,7 @@ struct database
     {
         SysTime now = Clock.currTime.toUTC;
         auto query = db.prepare(
-            SQL_SELECT_PREDICTION_PREFIX ~ "WHERE creator == ? AND closes < ? ORDER BY closes;");
+                SQL_SELECT_PREDICTION_PREFIX ~ "WHERE creator == ? AND closes < ? ORDER BY closes;");
         query.bind(1, userid);
         query.bind(2, now.toISOExtString());
         return parsePredictionQuery(query.execute());
@@ -496,7 +503,7 @@ struct database
     {
         order[] ret;
         auto query = db.prepare(
-            "SELECT prediction, share_count, yes_order, date FROM orders ORDER BY date DESC LIMIT 20;");
+                "SELECT prediction, share_count, yes_order, date FROM orders ORDER BY date DESC LIMIT 20;");
         foreach (row; query.execute())
         {
             auto predid = row.peek!int(0);
@@ -513,7 +520,7 @@ struct database
         predStats ret;
         {
             auto query = db.prepare(
-                "SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
+                    "SELECT SUM(share_count) FROM orders WHERE prediction = ? AND user = ? AND yes_order = ?;");
             query.bind(1, predid);
             query.bind(2, userid);
             query.bind(3, 1);
@@ -532,7 +539,7 @@ struct database
     private millicredits getInvestment(int userid, int predid, share_type t)
     {
         auto query = db.prepare(
-            "SELECT SUM(amount) FROM transactions WHERE prediction=? AND sender=? AND yes_order=?;");
+                "SELECT SUM(amount) FROM transactions WHERE prediction=? AND sender=? AND yes_order=?;");
         query.bind(1, predid);
         query.bind(2, userid);
         query.bind(3, t);
@@ -570,7 +577,7 @@ struct database
         /* payout */
         {
             auto query = db.prepare(
-                "SELECT user, SUM(share_count) FROM orders WHERE prediction=? AND yes_order=? GROUP BY user;");
+                    "SELECT user, SUM(share_count) FROM orders WHERE prediction=? AND yes_order=? GROUP BY user;");
             query.bind(1, pred.id);
             query.bind(2, result ? 1 : 2);
             int[int] shares;
@@ -590,7 +597,7 @@ struct database
         chance_change[] changes;
         changes ~= chance_change(pred.created, 0.5, 0, share_type.balance);
         auto query = db.prepare(
-            "SELECT share_count, yes_order, date FROM orders WHERE prediction=? ORDER BY date;");
+                "SELECT share_count, yes_order, date FROM orders WHERE prediction=? ORDER BY date;");
         query.bind(1, pred.id);
         int yes_shares, no_shares;
         foreach (row; query.execute())
@@ -629,7 +636,7 @@ struct database
     private int countPredShares(int predid, share_type t)
     {
         auto query = db.prepare(
-            "SELECT SUM(share_count), yes_order FROM orders WHERE prediction=? AND yes_order=? ORDER BY date;");
+                "SELECT SUM(share_count), yes_order FROM orders WHERE prediction=? AND yes_order=? ORDER BY date;");
         query.bind(1, predid);
         query.bind(2, t);
         return query.execute().oneValue!int();
@@ -638,7 +645,7 @@ struct database
     int countPredShares(prediction pred, user u, share_type t)
     {
         auto query = db.prepare(
-            "SELECT SUM(share_count) FROM orders WHERE prediction=? AND user=? AND yes_order=?;");
+                "SELECT SUM(share_count) FROM orders WHERE prediction=? AND user=? AND yes_order=?;");
         query.bind(1, pred.id);
         query.bind(2, u.id);
         query.bind(3, t);
@@ -647,8 +654,7 @@ struct database
 
     auto lastWeeklyTax()
     {
-        auto query = db.prepare(
-            "SELECT max(date) FROM transactions WHERE yes_order=?;");
+        auto query = db.prepare("SELECT max(date) FROM transactions WHERE yes_order=?;");
         query.bind(1, share_type.weekly_tax);
         string date = query.execute().oneValue!string();
         if (date == "")
@@ -873,7 +879,7 @@ unittest
 
     auto pred2 = db.getPrediction(1);
     assert(pred2.cost(10, share_type.no) > price, text(pred2.cost(10,
-        share_type.no)) ~ " !> " ~ text(price));
+            share_type.no)) ~ " !> " ~ text(price));
     /* check for database state */
     auto admin2 = db.getUser(user.id);
     auto pred22 = db.getPrediction(pred2.id);
@@ -885,9 +891,9 @@ unittest
 immutable TAX_ABOVE = millicredits(900 * 1000);
 immutable UNTAX_BELOW = millicredits(500 * 1000);
 
-void doWeeklyTax(float weekly_tax_rate)
+void doWeeklyTax(real weekly_tax_rate)
 {
-    import std.stdio;
+    const percentage = cast(int)(weekly_tax_rate * 100.0);
     auto db = getDatabase();
     auto last = db.lastWeeklyTax();
     SysTime now = Clock.currTime.toUTC;
@@ -900,24 +906,28 @@ void doWeeklyTax(float weekly_tax_rate)
         time_diff = dur!"weeks"(1);
     auto weeks = time_diff.total!"weeks";
     writeln("doWeeklyTax for weeks: ", weeks);
-    foreach (user; db.users) {
+    foreach (user; db.users)
+    {
         auto cash = db.getCash(user.id);
-        if (cash > TAX_ABOVE) {
+        if (cash > TAX_ABOVE)
+        {
             auto taxable = cash - TAX_ABOVE;
             auto deduct = millicredits(cast(long)(taxable.amount * weekly_tax_rate));
             db.transferMoney(user.id, FUNDER_ID, deduct, 0, share_type.weekly_tax);
-            string msg = "You paid "~text(deduct);
+            string msg = "You paid " ~ text(percentage) ~ "% of " ~ text(taxable);
             if (weeks > 1)
-                msg ~= " for "~text(weeks)~" weeks";
-            db.messageTo(user, "Weekly Taxes: "~text(deduct), msg);
-        } else if (cash < UNTAX_BELOW) {
+                msg ~= " for " ~ text(weeks) ~ " weeks";
+            db.messageTo(user, "Weekly Taxes: " ~ text(deduct), msg);
+        }
+        else if (cash < UNTAX_BELOW)
+        {
             auto taxable = UNTAX_BELOW - cash;
             auto win = millicredits(cast(long)(taxable.amount * weekly_tax_rate));
             db.transferMoney(FUNDER_ID, user.id, win, 0, share_type.weekly_tax);
-            string msg = "You received "~text(win);
+            string msg = "You received " ~ text(percentage) ~ "% of " ~ text(taxable);
             if (weeks > 1)
-                msg ~= " for "~text(weeks)~" weeks";
-            db.messageTo(user, "Weekly Negative Tax: "~text(win), msg);
+                msg ~= " for " ~ text(weeks) ~ " weeks";
+            db.messageTo(user, "Weekly Negative Tax: " ~ text(win), msg);
         }
     }
 }

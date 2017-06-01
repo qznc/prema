@@ -73,7 +73,7 @@ void index(HTTPServerRequest req, HTTPServerResponse res)
 }
 
 void renderPrediction(model.prediction pred, database db, string[] errors,
-    HTTPServerRequest req, HTTPServerResponse res)
+        HTTPServerRequest req, HTTPServerResponse res)
 {
     auto now = Clock.currTime;
     auto creator = db.getUser(pred.creator);
@@ -92,26 +92,28 @@ void renderPrediction(model.prediction pred, database db, string[] errors,
     bool can_settle = userId == creator.id;
     auto closed = now > SysTime.fromISOExtString(pred.closes);
     auto settled = pred.settled != "";
-    logInfo("settled: "~text(settled)~" p/"~text(pred.id));
+    logInfo("settled: " ~ text(settled) ~ " p/" ~ text(pred.id));
     auto pred_changes = db.getPredChanges(pred);
     string pageTitle = pred.statement;
     res.render!("prediction.dt", pageTitle, pred, creator, closed, settled,
-        pred_changes, can_settle, predStats, your_yes_shares, your_no_shares, errors,
-        req);
+            pred_changes, can_settle, predStats, your_yes_shares, your_no_shares, errors, req);
 }
 
 void prediction(HTTPServerRequest req, HTTPServerResponse res)
 {
     auto id = to!int(req.params["predID"]);
     auto db = getDatabase();
-    try {
+    try
+    {
         auto pred = db.getPrediction(id);
         string[] errors;
         renderPrediction(pred, db, errors, req, res);
-    } catch (NoSuchPrediction e) {
-        logInfo("no prediction "~text(id));
+    }
+    catch (NoSuchPrediction e)
+    {
+        logInfo("no prediction " ~ text(id));
         auto pageTitle = "No such prediction";
-        auto text = "Sorry. Prediction "~text(id)~" does not exist.";
+        auto text = "Sorry. Prediction " ~ text(id) ~ " does not exist.";
         res.statusCode = HTTPStatus.badRequest;
         res.render!("plain.dt", pageTitle, text, req);
     }
@@ -123,13 +125,13 @@ void feed_predictions(HTTPServerRequest req, HTTPServerResponse res)
     auto db = getDatabase();
     auto preds = db.activePredictions();
     string last_update;
-    foreach(pred; preds) {
+    foreach (pred; preds)
+    {
         if (pred.created > last_update)
             last_update = pred.created;
     }
     res.render!("atom.dt", pageTitle, preds, req, last_update);
 }
-
 
 void highscores(HTTPServerRequest req, HTTPServerResponse res)
 {
@@ -201,11 +203,15 @@ void post_create(HTTPServerRequest req, HTTPServerResponse res)
         auto last = db.lastPredCreateDateBy(user);
         db.createPrediction(b_parsed, pred, end_parsed, user);
         auto diff = now - last;
-        if (diff.total!"hours" >= 24*6 + 23)
+        if (diff.total!"hours" >= 24 * 6 + 23)
         {
-            db.cashBonus(user, credits(5), "Bonus is given every week if you create a prediction.");
-        } else {
-            logInfo("no create cash bonus for "~text(user.id)~" because diff="~text(diff.total!"hours")~"h");
+            db.cashBonus(user, credits(5),
+                    "Bonus is given every week if you create a prediction.");
+        }
+        else
+        {
+            logInfo("no create cash bonus for " ~ text(
+                    user.id) ~ " because diff=" ~ text(diff.total!"hours") ~ "h");
         }
         res.redirect("/");
     }
@@ -236,7 +242,8 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
     auto id = to!int(req.params["predID"]);
     auto db = getDatabase();
     auto pred = db.getPrediction(id);
-    enforceHTTP(pred.settled == "", HTTPStatus.badRequest, "Cannot buy shares of settled predictions");
+    enforceHTTP(pred.settled == "", HTTPStatus.badRequest,
+            "Cannot buy shares of settled predictions");
     auto userId = req.session.get!int("userId");
     auto user = db.getUser(userId);
     auto type = req.form["type"] == "yes" ? share_type.yes : share_type.no;
@@ -245,26 +252,33 @@ void buy_shares(HTTPServerRequest req, HTTPServerResponse res)
         errors ~= "You only have " ~ text(count) ~ " shares.";
     auto price = pred.cost(amount, type);
     import std.math : abs;
+
     auto tax = millicredits(abs(price.amount * 1 / 100));
     auto full_price = millicredits(price.amount + tax.amount);
     auto cash = db.getCash(user.id);
     if (cash < full_price)
-        errors ~= "That would have cost " ~ text(price+tax) ~ ", but you only have " ~ text(cash) ~ ".";
+        errors ~= "That would have cost " ~ text(
+                price + tax) ~ ", but you only have " ~ text(cash) ~ ".";
     if (errors.empty)
     {
         auto last = db.lastTransactionDateBy(user);
         db.buy(user.id, id, amount, type, price);
-        if (user.id != pred.creator) {
-            logInfo("tax "~text(tax)~" from "~text(user.id)~" to "~text(pred.creator));
+        if (user.id != pred.creator)
+        {
+            logInfo("tax " ~ text(tax) ~ " from " ~ text(user.id) ~ " to " ~ text(pred.creator));
             db.transferMoney(user.id, pred.creator, tax, pred.id, share_type.share_tax);
         }
         auto now = Clock.currTime.toUTC;
         auto diff = now - last;
         if (diff.total!"hours" >= 23)
         {
-            db.cashBonus(user, credits(1), "Bonus is given every days if you buy or sell something.");
-        } else {
-            logInfo("no buy cash bonus for "~text(user.id)~" because diff="~text(diff.total!"hours")~"h");
+            db.cashBonus(user, credits(1),
+                    "Bonus is given every days if you buy or sell something.");
+        }
+        else
+        {
+            logInfo("no buy cash bonus for " ~ text(
+                    user.id) ~ " because diff=" ~ text(diff.total!"hours") ~ "h");
         }
         res.redirect(req.path);
     }
@@ -303,17 +317,20 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 {
     auto id = to!int(req.params["userID"]);
     auto db = getDatabase();
-    try {
+    try
+    {
         auto user = db.getUser(id);
         string pageTitle = user.name;
         auto cash = db.getCash(id);
         auto predsActive = db.usersActivePredictions(id);
         auto predsClosed = db.usersClosedPredictions(id);
         res.render!("user.dt", pageTitle, user, cash, predsActive, predsClosed, req);
-    } catch (NoSuchUser e) {
-        logInfo("no user "~text(id));
+    }
+    catch (NoSuchUser e)
+    {
+        logInfo("no user " ~ text(id));
         auto pageTitle = "No such user";
-        auto text = "Sorry. User "~text(id)~" does not exist.";
+        auto text = "Sorry. User " ~ text(id) ~ " does not exist.";
         res.statusCode = HTTPStatus.badRequest;
         res.render!("plain.dt", pageTitle, text, req);
     }
@@ -322,7 +339,8 @@ void show_user(HTTPServerRequest req, HTTPServerResponse res)
 /* Github Auth 1: Send user to Github */
 void loginGithub(HTTPServerRequest req, HTTPServerResponse res)
 {
-    auto url = "https://github.com/login/oauth/authorize?scope=user:email&client_id=" ~ environment.get("GH_BASIC_CLIENT_ID","id-unknown");
+    auto url = "https://github.com/login/oauth/authorize?scope=user:email&client_id="
+        ~ environment.get("GH_BASIC_CLIENT_ID", "id-unknown");
     logInfo("redirect to github auth");
     res.redirect(url);
 }
@@ -337,19 +355,21 @@ void githubCallback(HTTPServerRequest req, HTTPServerResponse res)
         req.method = HTTPMethod.POST;
         req.headers["Accept"] = "application/json";
         req.contentType = "application/x-www-form-urlencoded";
-        auto bdy = "client_id=" ~ environment.get("GH_BASIC_CLIENT_ID", "id-unknown") ~
-            "&client_secret=" ~ environment.get("GH_BASIC_CLIENT_SECRET", "secret-unknown") ~
-            "&code="~code;
+        auto bdy = "client_id=" ~ environment.get("GH_BASIC_CLIENT_ID",
+            "id-unknown") ~ "&client_secret=" ~ environment.get("GH_BASIC_CLIENT_SECRET",
+            "secret-unknown") ~ "&code=" ~ code;
         req.bodyWriter.write(bdy);
     }, (scope res2) {
         logInfo("got answer from Github");
-        if (!res2.statusCode == 200) {
-            logWarn("Error: "~text(res2.statusCode));
+        if (!res2.statusCode == 200)
+        {
+            logWarn("Error: " ~ text(res2.statusCode));
             return;
         }
         assert(res2.contentType == "application/json; charset=utf-8");
         auto json = res2.readJson();
-        if ("error" in json) {
+        if ("error" in json)
+        {
             logInfo(text(json["error_description"]));
             logInfo(text(json["error_uri"]));
             return;
@@ -358,13 +378,14 @@ void githubCallback(HTTPServerRequest req, HTTPServerResponse res)
         auto access_token = json["access_token"].get!string;
         auto session = res.startSession();
         session.set("github_access_token", access_token);
-        requestHTTP("https://api.github.com/user?access_token="~access_token, (scope req) {
+        requestHTTP("https://api.github.com/user?access_token=" ~ access_token, (scope req) {
             req.method = HTTPMethod.GET;
             req.headers["Accept"] = "application/json";
         }, (scope res3) {
             logInfo("got info from Github");
-            if (!res3.statusCode == 200) {
-                logWarn("Error: "~text(res3.statusCode));
+            if (!res3.statusCode == 200)
+            {
+                logWarn("Error: " ~ text(res3.statusCode));
                 res.terminateSession();
                 return;
             }
@@ -460,6 +481,13 @@ This also means,
 the creator does not gain or lose any money,
 if nobody else trades on a prediction.
 
+There is a **weekly tax** of 5%.
+Cash above 900¢ is taxes.
+You can also receive a (negative) tax,
+if your cash is below 500¢.
+Notice that only cash is taxed, but not shares.
+This means, you should invest your money instead of keeping the cash.
+
 ## How to Interpret the Price?
 
 The price of one share corresponds to the chance
@@ -470,8 +498,7 @@ prediction markets encourage insider trading.
 If you know more about certain predictions,
 you can profit from this knowledge.
 In return, the public gets a more accurate forecast.
-	",
-        MarkdownFlags.none);
+	", MarkdownFlags.none);
     res.render!("plain.dt", pageTitle, text, req);
 }
 
