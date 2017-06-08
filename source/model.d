@@ -978,7 +978,7 @@ void doWeeklyTax(real weekly_tax_rate)
             auto win = computeTax(cash, weekly_tax_rate, weeks);
             db.transferMoney(FUNDER_ID, user.id, win, 0, transaction_type.weekly_tax);
             string msg = "You received " ~ text(percentage) ~ "% of " ~ text(
-                    TAX_ABOVE) ~ " minus your cash";
+                    UNTAX_BELOW) ~ " minus your cash";
             if (weeks > 1)
                 msg ~= " over " ~ text(weeks) ~ " weeks";
             db.messageTo(user, "Weekly Negative Taxes: " ~ text(win), msg);
